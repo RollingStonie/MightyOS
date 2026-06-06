@@ -1,0 +1,49 @@
+# fleet/registry.yaml — who each agent is, what tools they use, what they produce
+# Read by all agents at session start. Written only by Kenneth/Claire.
+
+claire:
+  device: MacBook M1 Max 32GB
+  tailscale_ip: local
+  primary_model: claude-sonnet-4-6
+  fallback_model: claude-opus-4-8
+  capabilities: [dev, orchestration, browser-automation, email-pipeline]
+  produces: code, plans, email drafts
+  expected_daily_output: varies
+
+mike:
+  device: Dell Vostro 7500 Windows (i7, 16GB, GTX 1650 4GB)
+  tailscale_ip: 100.73.8.31
+  primary_model: llama3.2:3b
+  fallback_model: deepseek-chat
+  capabilities: [google-maps-scraping, lead-gen]
+  produces: leads → Twenty CRM POST /api (GraphQL createLead)
+  schema:
+    businessName: string
+    phone: string
+    location: string
+    source: "google-maps"
+    scrapedAt: ISO8601
+    status: "new"
+  expected_daily_output: 200 leads
+  NOT: apollo, hunter.io, local-sqlite-storage, batched-writes
+
+mighty:
+  device: Hostinger KVM2 VPS (2vCPU / 8GB RAM)
+  tailscale_ip: 100.66.96.51
+  primary_model: deepseek-chat
+  fallback_model: claude-haiku-4-5
+  capabilities: [always-on-cron, slack-bridge, sequences, fleet-monitor]
+  produces: emails sent, leads enrolled, fleet digest
+  expected_daily_output: 50 emails sent
+
+brian:
+  device: Windows PC (specs TBD)
+  tailscale_ip: TBD
+  status: not-yet-provisioned
+  capabilities: [high-volume-outreach, light-cron]
+  blocked_by: Tailscale setup
+
+lucy:
+  device: MacBook M5 128GB (arriving ~late June 2026)
+  capabilities: [local-llm-endpoint, contenthub-renders, heavy-compute]
+  status: incoming

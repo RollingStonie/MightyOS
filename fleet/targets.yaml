@@ -1,0 +1,17 @@
+# fleet/targets.yaml — expected daily outputs, used by fleet_monitor.py for gap detection
+
+mike:
+  leads_per_day: 200
+  max_errors_per_day: 10
+  offline_alert_minutes: 15
+
+mighty:
+  emails_per_day: 50
+  offline_alert_minutes: 30
+
+brian:
+  emails_per_day: 0
+  offline_alert_minutes: 999
+
+claire:
+  offline_alert_minutes: 60

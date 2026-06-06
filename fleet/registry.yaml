@@ -16,14 +16,15 @@ mike:
   primary_model: llama3.2:3b
   fallback_model: deepseek-chat
   capabilities: [google-maps-scraping, lead-gen]
-  produces: leads → Twenty CRM POST /api (GraphQL createLead)
+  produces: leads → Twenty CRM POST /graphql (GraphQL createLead) — see fleet/pipeline-contracts.md
   schema:
     businessName: string
     phone: string
     location: string
     source: "google-maps"
     scrapedAt: ISO8601
-    status: "new"
+    status: "NEW"        # Twenty SELECT values are UPPER_CASE
+    brand: "AIRCHY"      # or MIGHTYTECHIE / OTHER
   expected_daily_output: 200 leads
   NOT: apollo, hunter.io, local-sqlite-storage, batched-writes
 

@@ -46,7 +46,7 @@ mutation CreateLead($input: LeadCreateInput!) {
 }
 ```
 
-**Input:** `{ businessName, phone, location, source: "google-maps", scrapedAt, status: "NEW", brand }`
+**Input:** `{ businessName, phone, location, source: "google-maps", scrapedAt, status: "NEW", brand, contactEmail, contactWebsite }`
 
 **On failure:** retry 3×, append to `~/.hermes/retry_queue/leads.jsonl`, flush on reconnect.
 

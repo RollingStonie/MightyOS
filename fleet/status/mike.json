@@ -1,1 +1,10 @@
-{"agent": "mike", "status": "offline", "last_seen": null, "current_task": null, "model_in_use": null, "results_today": 0, "errors_today": 0, "session_started": null}
+{
+  "agent": "mike",
+  "last_seen": "2026-06-07T09:53:17Z",
+  "status": "online",
+  "current_task": "auto-detected: C:\\Users\\Jomo\\work\\scrapy-tools\\venv\\Scripts\\python.exe -u scrape_uk_10k.py",
+  "model_in_use": "llama3.2:3b",
+  "results_today": 0,
+  "errors_today": 0,
+  "session_started": "unknown"
+}

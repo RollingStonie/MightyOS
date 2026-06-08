@@ -36,7 +36,7 @@ $TS_KEY     = if ($env:TS_KEY)    { $env:TS_KEY }    else { throw "TS_KEY env va
 $BOT_TOKEN  = if ($env:BOT_TOKEN) { $env:BOT_TOKEN } else { "" }
 $DS_KEY     = if ($env:DS_KEY)    { $env:DS_KEY }    else { "sk-123dda9dcd104362929f51dc48cb88c1" }
 $GH_TOKEN   = if ($env:GH_TOKEN)  { $env:GH_TOKEN }  else { "" }
-$HERMES_RAW = if ($env:HERMES_RAW){ $env:HERMES_RAW } else { "https://raw.githubusercontent.com/RollingStonie/Hermes/main/sync" }
+$HERMES_RAW = if ($env:HERMES_RAW){ $env:HERMES_RAW } else { "https://raw.githubusercontent.com/RollingStonie/MightyOS/main/sync" }
 
 $HERMES_DIR = "C:\hermes"
 $LOG        = "$HERMES_DIR\bootstrap.log"

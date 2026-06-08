@@ -178,10 +178,16 @@ AGENT_SYS=You are $AGENT, Kenneth's fleet agent. Be concise and direct.
 
 # ─── 10. Task Scheduler: heartbeat + bot (infinite-restart loop) ─────────────
 Log "Registering scheduled tasks..."
-$user = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
-$pw   = Read-Host "Enter Windows password for '$user' (needed for task persistence)" -AsSecureString
-$pwPlain = [Runtime.InteropServices.Marshal]::PtrToStringAuto(
-    [Runtime.InteropServices.Marshal]::SecureStringToBSTR($pw))
+# Use SYSTEM principal — no password needed, works for remote/MeshCentral installs.
+# SYSTEM has internet access on home PCs (HTTPS to Discord/DeepSeek works fine).
+# If WIN_PASSWORD env var is set, use user+password instead (more compatible with domain PCs).
+if ($env:WIN_PASSWORD) {
+    $user    = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
+    $pwPlain = $env:WIN_PASSWORD
+    $taskPrincipal = New-ScheduledTaskPrincipal -UserId $user -LogonType Password -RunLevel Highest
+} else {
+    $taskPrincipal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccount -RunLevel Highest
+}
 
 # Heartbeat — every 5 minutes
 $hbAction = New-ScheduledTaskAction `
@@ -189,8 +195,13 @@ $hbAction = New-ScheduledTaskAction `
     -Argument "/c `"$PYTHON -u $HERMES_DIR\heartbeat.py >> $HERMES_DIR\heartbeat.log 2>&1`"" `
     -WorkingDirectory $HERMES_DIR
 $hbTrigger = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Minutes 5)
-Register-ScheduledTask -TaskName "HermesAgentHeartbeat" -Action $hbAction -Trigger $hbTrigger `
-    -User $user -Password $pwPlain -RunLevel Highest -Force | Out-Null
+if ($env:WIN_PASSWORD) {
+    Register-ScheduledTask -TaskName "HermesAgentHeartbeat" -Action $hbAction -Trigger $hbTrigger `
+        -User $user -Password $pwPlain -RunLevel Highest -Force | Out-Null
+} else {
+    Register-ScheduledTask -TaskName "HermesAgentHeartbeat" -Action $hbAction -Trigger $hbTrigger `
+        -Principal $taskPrincipal -Force | Out-Null
+}
 Start-ScheduledTask -TaskName "HermesAgentHeartbeat"
 Log "  Task: HermesAgentHeartbeat registered"
 
@@ -201,8 +212,13 @@ if ($BOT_TOKEN) {
         -Argument "/c `"for /L %i in (1,0,1) do ($PYTHON -u $HERMES_DIR\agent_bot.py >> $HERMES_DIR\bot.log 2>&1 & timeout /t 5 /nobreak > nul)`"" `
         -WorkingDirectory $HERMES_DIR
     $botTrigger = New-ScheduledTaskTrigger -AtStartup
-    Register-ScheduledTask -TaskName "HermesAgentBot" -Action $botAction -Trigger $botTrigger `
-        -User $user -Password $pwPlain -RunLevel Highest -Force | Out-Null
+    if ($env:WIN_PASSWORD) {
+        Register-ScheduledTask -TaskName "HermesAgentBot" -Action $botAction -Trigger $botTrigger `
+            -User $user -Password $pwPlain -RunLevel Highest -Force | Out-Null
+    } else {
+        Register-ScheduledTask -TaskName "HermesAgentBot" -Action $botAction -Trigger $botTrigger `
+            -Principal $taskPrincipal -Force | Out-Null
+    }
     Start-ScheduledTask -TaskName "HermesAgentBot"
     Log "  Task: HermesAgentBot registered"
 }
@@ -214,8 +230,13 @@ if (Test-Path "$HERMES_DIR\lead_watcher.py") {
         -Argument "/c `"for /L %i in (1,0,1) do ($PYTHON -u $HERMES_DIR\lead_watcher.py >> $HERMES_DIR\lead_watcher.log 2>&1 & timeout /t 10 /nobreak > nul)`"" `
         -WorkingDirectory $HERMES_DIR
     $lwTrigger = New-ScheduledTaskTrigger -AtStartup
-    Register-ScheduledTask -TaskName "HermesLeadWatcher" -Action $lwAction -Trigger $lwTrigger `
-        -User $user -Password $pwPlain -RunLevel Highest -Force | Out-Null
+    if ($env:WIN_PASSWORD) {
+        Register-ScheduledTask -TaskName "HermesLeadWatcher" -Action $lwAction -Trigger $lwTrigger `
+            -User $user -Password $pwPlain -RunLevel Highest -Force | Out-Null
+    } else {
+        Register-ScheduledTask -TaskName "HermesLeadWatcher" -Action $lwAction -Trigger $lwTrigger `
+            -Principal $taskPrincipal -Force | Out-Null
+    }
     Log "  Task: HermesLeadWatcher registered (not started — start manually when scraper is ready)"
 }
 
@@ -230,8 +251,13 @@ git -C C:\MightyOS pull --quiet 2>&1 | Out-Null
         -Execute "C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe" `
         -Argument "-NonInteractive -File $HERMES_DIR\sync_brain.ps1"
     $syncTrigger = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Minutes 5)
-    Register-ScheduledTask -TaskName "HermesBrainSync" -Action $syncAction -Trigger $syncTrigger `
-        -User $user -Password $pwPlain -RunLevel Highest -Force | Out-Null
+    if ($env:WIN_PASSWORD) {
+        Register-ScheduledTask -TaskName "HermesBrainSync" -Action $syncAction -Trigger $syncTrigger `
+            -User $user -Password $pwPlain -RunLevel Highest -Force | Out-Null
+    } else {
+        Register-ScheduledTask -TaskName "HermesBrainSync" -Action $syncAction -Trigger $syncTrigger `
+            -Principal $taskPrincipal -Force | Out-Null
+    }
 
     # Clone MightyOS Brain repo
     Log "Cloning MightyOS Brain repo..."

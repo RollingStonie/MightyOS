@@ -94,10 +94,13 @@ function Winget-Install { param([string]$id,[string]$label)
     winget install --id $id --silent --accept-package-agreements --accept-source-agreements 2>&1 | Out-Null
 }
 
-Winget-Install "Tailscale.Tailscale" "Tailscale"
-Winget-Install "Python.Python.3.12"  "Python 3.12"
-Winget-Install "OpenJS.NodeJS.LTS"   "Node.js LTS"
-Winget-Install "Google.Chrome"       "Google Chrome"
+Winget-Install "Tailscale.Tailscale"       "Tailscale"
+Winget-Install "Python.Python.3.12"       "Python 3.12"
+Winget-Install "OpenJS.NodeJS.LTS"        "Node.js LTS"
+Winget-Install "Google.Chrome"            "Google Chrome"
+Winget-Install "Discord.Discord"          "Discord"
+Winget-Install "SlackTechnologies.Slack"  "Slack"
+Winget-Install "Keeper.KeeperDesktop"     "Keeper Password Manager"
 
 # Optional: Ollama for local LLM (only if GPU detected or SKIP_GPU != "1")
 if ($env:SKIP_GPU -ne "1") {
@@ -255,6 +258,9 @@ Log "  Tasks:       HermesAgentHeartbeat, HermesAgentBot, HermesLeadWatcher"
 Log "  Log:         $LOG"
 Log "  Tailscale:   join fleet — verify with: tailscale status"
 Log "  Chrome:      installed"
+Log "  Discord:     installed"
+Log "  Slack:       installed"
+Log "  Keeper:      installed (open and log in manually)"
 Log "  Claude Code: $(npm list -g @anthropic-ai/claude-code --depth 0 2>$null | Select-String 'claude' | Select-Object -First 1)"
 Log "  Codex:       $(npm list -g @openai/codex --depth 0 2>$null | Select-String 'codex' | Select-Object -First 1)"
 Log ""

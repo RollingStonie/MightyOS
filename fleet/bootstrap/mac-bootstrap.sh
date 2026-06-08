@@ -68,10 +68,10 @@ else
     log "  WARNING: tailscale not in PATH — open /Applications/Tailscale.app and join with key: $TS_KEY"
 fi
 
-# ─── 3. Python 3, Node.js, Chrome ────────────────────────────────────────────
-log "Installing Python, Node.js, Chrome..."
+# ─── 3. Python 3, Node.js, Chrome, Discord, Slack, Keeper ───────────────────
+log "Installing Python, Node.js, and desktop apps..."
 brew install python@3.12 node 2>/dev/null || true
-brew install --cask google-chrome 2>/dev/null || true
+brew install --cask google-chrome discord slack keeper-password-manager 2>/dev/null || true
 
 # Link python3 if needed
 PYTHON="$(brew --prefix python@3.12)/bin/python3.12"
@@ -245,6 +245,9 @@ log "  Hermes dir:  $HERMES_DIR"
 log "  Log:         $LOG"
 log "  Tailscale:   verify with: tailscale status"
 log "  Chrome:      installed (/Applications/Google Chrome.app)"
+log "  Discord:     installed (/Applications/Discord.app)"
+log "  Slack:       installed (/Applications/Slack.app)"
+log "  Keeper:      installed — open and log in manually"
 log "  Claude Code: $(npm list -g @anthropic-ai/claude-code --depth 0 2>/dev/null | grep claude || echo 'check npm')"
 log "  Codex:       $(npm list -g @openai/codex --depth 0 2>/dev/null | grep codex || echo 'check npm')"
 log ""

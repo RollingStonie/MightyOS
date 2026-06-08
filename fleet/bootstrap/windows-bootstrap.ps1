@@ -120,7 +120,7 @@ $env:PATH = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";"
 # ─── 4. Find Python ──────────────────────────────────────────────────────────
 $PYTHON = $null
 foreach ($p in $PYTHON_CANDIDATES) { if (Test-Path $p) { $PYTHON = $p; break } }
-if (-not $PYTHON) { $PYTHON = (Get-Command python -ErrorAction SilentlyContinue)?.Source }
+if (-not $PYTHON) { $cmd = Get-Command python -ErrorAction SilentlyContinue; if ($cmd) { $PYTHON = $cmd.Source } }
 if (-not $PYTHON) { throw "Python not found after install — reboot and re-run" }
 Log "Python: $PYTHON"
 

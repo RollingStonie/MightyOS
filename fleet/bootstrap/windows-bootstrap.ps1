@@ -101,6 +101,7 @@ Winget-Install "Google.Chrome"            "Google Chrome"
 Winget-Install "Discord.Discord"          "Discord"
 Winget-Install "SlackTechnologies.Slack"  "Slack"
 Winget-Install "Keeper.KeeperDesktop"     "Keeper Password Manager"
+Winget-Install "NordVPN.NordVPN"          "NordVPN"
 
 # Optional: Ollama for local LLM (only if GPU detected or SKIP_GPU != "1")
 if ($env:SKIP_GPU -ne "1") {
@@ -261,6 +262,7 @@ Log "  Chrome:      installed"
 Log "  Discord:     installed"
 Log "  Slack:       installed"
 Log "  Keeper:      installed (open and log in manually)"
+Log "  NordVPN:     installed (open and log in manually)"
 Log "  Claude Code: $(npm list -g @anthropic-ai/claude-code --depth 0 2>$null | Select-String 'claude' | Select-Object -First 1)"
 Log "  Codex:       $(npm list -g @openai/codex --depth 0 2>$null | Select-String 'codex' | Select-Object -First 1)"
 Log ""

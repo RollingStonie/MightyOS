@@ -63,29 +63,42 @@ Log "Setting LocalAccountTokenFilterPolicy..."
 New-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" `
     -Name LocalAccountTokenFilterPolicy -Value 1 -PropertyType DWord -Force | Out-Null
 
-# ─── 2. OpenSSH Server ───────────────────────────────────────────────────────
+# ─── 2. OpenSSH Server (best-effort — SSH is nice-to-have, not required) ─────
 Log "Installing OpenSSH Server..."
-$sshdState = (Get-WindowsCapability -Online -Name "OpenSSH.Server*").State
-if ($sshdState -ne "Installed") {
-    Add-WindowsCapability -Online -Name "OpenSSH.Server~~~~0.0.1.0" | Out-Null
-}
-Set-Service sshd -StartupType Automatic
-Start-Service sshd
-New-NetFirewallRule -Name sshd -DisplayName "OpenSSH" -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 22 -ErrorAction SilentlyContinue | Out-Null
+try {
+    $sshdState = (Get-WindowsCapability -Online -Name "OpenSSH.Server*" -ErrorAction Stop).State
+    if ($sshdState -ne "Installed") {
+        Add-WindowsCapability -Online -Name "OpenSSH.Server~~~~0.0.1.0" -ErrorAction Stop | Out-Null
+    }
+    # Wait up to 30s for sshd service to appear after capability install
+    $waited = 0
+    while (-not (Get-Service sshd -ErrorAction SilentlyContinue) -and $waited -lt 30) {
+        Start-Sleep -Seconds 3; $waited += 3
+    }
+    if (Get-Service sshd -ErrorAction SilentlyContinue) {
+        Set-Service sshd -StartupType Automatic
+        Start-Service sshd -ErrorAction SilentlyContinue
+        New-NetFirewallRule -Name sshd -DisplayName "OpenSSH" -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 22 -ErrorAction SilentlyContinue | Out-Null
 
-# Default shell → PowerShell
-New-Item -Path "HKLM:\SOFTWARE\OpenSSH" -Force | Out-Null
-New-ItemProperty -Path "HKLM:\SOFTWARE\OpenSSH" -Name DefaultShell `
-    -Value "C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe" -PropertyType String -Force | Out-Null
+        # Default shell → PowerShell
+        New-Item -Path "HKLM:\SOFTWARE\OpenSSH" -Force | Out-Null
+        New-ItemProperty -Path "HKLM:\SOFTWARE\OpenSSH" -Name DefaultShell `
+            -Value "C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe" -PropertyType String -Force | Out-Null
 
-# Kenneth's SSH key
-$authKeys = "$env:ProgramData\ssh\administrators_authorized_keys"
-if (-not (Test-Path $authKeys)) { New-Item $authKeys -Force | Out-Null }
-if (-not (Select-String -Path $authKeys -Pattern "kennethworkinfrastructure" -Quiet -ErrorAction SilentlyContinue)) {
-    Add-Content $authKeys $KENNETH_PUBKEY
+        # Kenneth's SSH key
+        $authKeys = "$env:ProgramData\ssh\administrators_authorized_keys"
+        if (-not (Test-Path $authKeys)) { New-Item $authKeys -Force | Out-Null }
+        if (-not (Select-String -Path $authKeys -Pattern "kennethworkinfrastructure" -Quiet -ErrorAction SilentlyContinue)) {
+            Add-Content $authKeys $KENNETH_PUBKEY
+        }
+        icacls $authKeys /inheritance:r /grant "Administrators:F" /grant "SYSTEM:F" | Out-Null
+        Log "OpenSSH ready."
+    } else {
+        Log "  WARNING: sshd service not found after OpenSSH install — SSH not available. Run 'Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0' manually."
+    }
+} catch {
+    Log "  WARNING: OpenSSH setup failed ($($_.Exception.Message)) — continuing without SSH."
 }
-icacls $authKeys /inheritance:r /grant "Administrators:F" /grant "SYSTEM:F" | Out-Null
-Log "OpenSSH ready."
 
 # ─── 3. winget: Python, Node.js, Chrome, Tailscale ───────────────────────────
 Log "Installing packages via winget..."

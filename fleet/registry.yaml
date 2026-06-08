@@ -15,7 +15,7 @@ mike:
   tailscale_ip: 100.73.8.31
   primary_model: llama3.2:3b
   fallback_model: deepseek-chat
-  capabilities: [google-maps-scraping, lead-gen]
+  capabilities: [google-maps-scraping, lead-gen, gpu-helper, contenthub-render-qa]
   produces: leads → Twenty CRM POST /graphql (GraphQL createLead) — see fleet/pipeline-contracts.md
   schema:
     businessName: string
@@ -38,10 +38,11 @@ mighty:
   expected_daily_output: 50 emails sent
 
 brian:
-  device: Windows PC (specs TBD)
+  device: Dell Vostro 15 3510 (i7-1165G7, 16GB RAM, Intel Iris Xe)
   tailscale_ip: TBD
-  status: not-yet-provisioned
-  capabilities: [high-volume-outreach, light-cron]
+  status: provisioning
+  capabilities: [contenthub-scanner, light-cron, outreach-sending]
+  role: always-on-cpu-network-box
   blocked_by: Tailscale setup
 
 lucy:

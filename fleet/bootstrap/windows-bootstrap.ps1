@@ -171,22 +171,19 @@ foreach ($f in $FILES) {
 
 # ─── 9. Write env files ───────────────────────────────────────────────────────
 Log "Writing env files..."
-
-@"
-AGENT=$AGENT
-ROLE=fleet-agent
-FLEET_WEBHOOK=$DISCORD_WEBHOOK
-BEAT_SECS=300
-"@ | Set-Content "$HERMES_DIR\heartbeat.env" -Encoding UTF8
+# Use WriteAllText with no-BOM UTF-8 — PowerShell 5.1's Set-Content -Encoding UTF8 adds a BOM,
+# which breaks Python's env file parser (first key becomes ﻿KEY instead of KEY).
+$enc = [System.Text.UTF8Encoding]::new($false)
+[System.IO.File]::WriteAllText(
+    "$HERMES_DIR\heartbeat.env",
+    "AGENT=$AGENT`nROLE=fleet-agent`nFLEET_WEBHOOK=$DISCORD_WEBHOOK`nBEAT_SECS=300`n",
+    $enc)
 
 if ($BOT_TOKEN) {
-@"
-DISCORD_BOT_TOKEN=$BOT_TOKEN
-DEEPSEEK_API_KEY=$DS_KEY
-DEEPSEEK_BASE_URL=https://api.deepseek.com
-AGENT=$AGENT
-AGENT_SYS=You are $AGENT, Kenneth's fleet agent. Be concise and direct.
-"@ | Set-Content "$HERMES_DIR\bot.env" -Encoding UTF8
+    [System.IO.File]::WriteAllText(
+        "$HERMES_DIR\bot.env",
+        "DISCORD_BOT_TOKEN=$BOT_TOKEN`nDEEPSEEK_API_KEY=$DS_KEY`nDEEPSEEK_BASE_URL=https://api.deepseek.com`nAGENT=$AGENT`nAGENT_SYS=You are $AGENT, Kenneth's fleet agent. Be concise and direct.`n",
+        $enc)
 }
 
 # ─── 10. Task Scheduler: heartbeat + bot (infinite-restart loop) ─────────────
@@ -259,7 +256,7 @@ if ($GH_TOKEN) {
 `$env:GIT_ASKPASS = 'echo'
 git -C C:\MightyOS pull --quiet 2>&1 | Out-Null
 "@
-    $syncScript | Set-Content "$HERMES_DIR\sync_brain.ps1" -Encoding UTF8
+    [System.IO.File]::WriteAllText("$HERMES_DIR\sync_brain.ps1", $syncScript, $enc)
     $syncAction = New-ScheduledTaskAction `
         -Execute "C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe" `
         -Argument "-NonInteractive -File $HERMES_DIR\sync_brain.ps1"

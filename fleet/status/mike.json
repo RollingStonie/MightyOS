@@ -1,8 +1,8 @@
 {
   "agent": "mike",
-  "last_seen": "2026-06-11T01:42:10Z",
+  "last_seen": "2026-06-11T02:17:12Z",
   "status": "online",
-  "current_task": "auto-detected: C:\\Users\\Jomo\\AppData\\Roaming\\uv\\tools\\hermes-agent\\Scripts\\python.exe C:\\Users\\Jomo\\.local\\bin\\hermes.exe",
+  "current_task": "auto-detected: C:\\Python314\\python.exe -u C:\\hermes\\heartbeat.py",
   "model_in_use": "llama3.2:3b",
   "results_today": 0,
   "errors_today": 0,

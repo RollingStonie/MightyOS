@@ -1,6 +1,6 @@
 {
   "agent": "mike",
-  "last_seen": "2026-06-12T13:52:09Z",
+  "last_seen": "2026-06-12T14:27:10Z",
   "status": "online",
   "current_task": "auto-detected: venv\\Scripts\\python.exe -u enrich_email_v2.py --in output/uk_badminton_leads_10k_with_email.csv --out output/emails_v2_d",
   "model_in_use": "llama3.2:3b",

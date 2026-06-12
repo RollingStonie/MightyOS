@@ -1,8 +1,8 @@
 {
   "agent": "mike",
-  "last_seen": "2026-06-12T10:57:09Z",
+  "last_seen": "2026-06-12T11:32:09Z",
   "status": "online",
-  "current_task": "auto-detected: C:\\Users\\Jomo\\AppData\\Roaming\\uv\\tools\\hermes-agent\\Scripts\\python.exe C:\\Users\\Jomo\\.local\\bin\\hermes.exe",
+  "current_task": "auto-detected: venv\\Scripts\\python.exe -u enrich_email_v2.py --in output/uk_badminton_leads_10k_with_email.csv --out output/emails_v2_d",
   "model_in_use": "llama3.2:3b",
   "results_today": 0,
   "errors_today": 0,

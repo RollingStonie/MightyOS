@@ -1,6 +1,6 @@
 {
   "agent": "mike",
-  "last_seen": "2026-06-18T04:37:09Z",
+  "last_seen": "2026-06-18T05:12:09Z",
   "status": "online",
   "current_task": "auto-detected: C:\\Python314\\python.exe -u C:\\hermes\\heartbeat.py",
   "model_in_use": "llama3.2:3b",

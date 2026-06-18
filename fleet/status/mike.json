@@ -1,8 +1,8 @@
 {
   "agent": "mike",
-  "last_seen": "2026-06-18T08:02:15Z",
+  "last_seen": "2026-06-18T08:37:10Z",
   "status": "online",
-  "current_task": "auto-detected: venv\\Scripts\\python.exe -u scrape_maps_v3.py --terms leisure centre|sports centre|badminton coaching|badminton academy -",
+  "current_task": "auto-detected: C:\\Python314\\python.exe -u C:\\hermes\\heartbeat.py",
   "model_in_use": "llama3.2:3b",
   "results_today": 0,
   "errors_today": 0,

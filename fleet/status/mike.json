@@ -1,8 +1,8 @@
 {
   "agent": "mike",
-  "last_seen": "2026-07-16T07:27:11Z",
+  "last_seen": "2026-07-16T08:02:12Z",
   "status": "online",
-  "current_task": "auto-detected: C:\\Users\\Jomo\\AppData\\Roaming\\uv\\tools\\hermes-agent\\Scripts\\python.exe C:\\Users\\Jomo\\.local\\bin\\hermes.exe gateway run",
+  "current_task": "auto-detected: venv\\Scripts\\python.exe -u scrape_maps_v3.py --terms leisure centre|sports centre|badminton coaching|badminton academy -",
   "model_in_use": "llama3.2:3b",
   "results_today": 0,
   "errors_today": 0,

@@ -1,6 +1,6 @@
 {
   "agent": "mike",
-  "last_seen": "2026-07-18T03:47:12Z",
+  "last_seen": "2026-07-18T04:22:10Z",
   "status": "online",
   "current_task": "auto-detected: C:\\Users\\Jomo\\AppData\\Roaming\\uv\\tools\\hermes-agent\\Scripts\\python.exe C:\\Users\\Jomo\\.local\\bin\\hermes.exe gateway run",
   "model_in_use": "llama3.2:3b",

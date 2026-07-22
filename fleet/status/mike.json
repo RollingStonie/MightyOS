@@ -1,8 +1,8 @@
 {
   "agent": "mike",
-  "last_seen": "2026-07-22T22:37:09Z",
+  "last_seen": "2026-07-22T23:12:10Z",
   "status": "online",
-  "current_task": "auto-detected: C:\\Users\\Jomo\\work\\scrapy-tools\\venv\\Scripts\\python.exe -u C:\\Users\\Jomo\\work\\scrapy-tools\\scrape_uk_10k.py",
+  "current_task": "auto-detected: C:\\Users\\Jomo\\AppData\\Roaming\\uv\\tools\\hermes-agent\\Scripts\\python.exe C:\\Users\\Jomo\\.local\\bin\\hermes.exe gateway run",
   "model_in_use": "llama3.2:3b",
   "results_today": 0,
   "errors_today": 0,

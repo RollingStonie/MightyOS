@@ -85,3 +85,23 @@ mutation UpdateLead($id: UUID!, $input: LeadUpdateInput!) {
 
 **Input:** `{ status: "REPLIED" }`
 > `lastReplyAt` / `replySnippet` fields are NOT yet on the `lead` object — add via metadata API before using.
+
+---
+
+## Mike → Twenty CRM → Ashley (warm outreach pipeline)
+
+Ashley runs warm email campaigns using Mautic. She needs leads from Twenty CRM that have been enriched with context for personalization.
+
+**Flow:**
+1. Mike scrapes leads → Twenty CRM (same as existing flow)
+2. Mike flags which leads are warm prospects (has email, relevant company, good hook) vs cold (phone-only, no email)
+3. Ashley queries Twenty CRM for leads with status `NEW` and a `contactEmail` set
+4. Ashley drafts personalized warm emails via Mautic
+
+**Lead statuses Ashley uses:**
+- `NEW` — fresh lead, not yet emailed
+- `CONTACTED` — warm email sent via Mautic
+- `REPLIED` — prospect responded, hand off to Kenneth
+- `ENROLLED` — enrolled in a Mautic nurture sequence
+- `CONVERTED` — became a customer
+- `DEAD` — bounced or uninterested

@@ -15,3 +15,7 @@ brian:
 
 claire:
   offline_alert_minutes: 60
+
+ashley:
+  emails_per_day: 0
+  offline_alert_minutes: 30

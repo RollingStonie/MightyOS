@@ -49,3 +49,11 @@ lucy:
   device: MacBook M5 128GB (arriving ~late June 2026)
   capabilities: [local-llm-endpoint, contenthub-renders, heavy-compute]
   status: incoming
+
+ashley:
+  device: Hostinger KVM2 VPS (2vCPU / 8GB RAM)
+  tailscale_ip: 100.66.96.51
+  primary_model: deepseek-v4-flash
+  capabilities: [warm-email-marketing, campaign-management, mautic-operations]
+  produces: email campaigns, lead nurturing, engagement tracking
+  expected_daily_output: warm email sequences

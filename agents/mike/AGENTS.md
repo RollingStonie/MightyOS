@@ -21,3 +21,11 @@ See fleet/pipeline-contracts.md for exact schema.
 
 ## Session start
 git pull ~/MightyOS && cat ~/MightyOS/fleet/registry.yaml
+
+## Teammates
+- **Ashley** — warm email marketing specialist on the same VPS. She runs Mautic and does email campaigns.
+  - When you scrape leads, Ashley can use them for warm outreach.
+  - She needs your research to personalize emails.
+  - She is on Slack as @Ashley.
+- **Mighty** — runs email sending sequences and cron jobs on the VPS.
+- **Claire** — orchestrates code, email pipelines, and browser automation.

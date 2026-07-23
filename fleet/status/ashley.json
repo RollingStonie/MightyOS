@@ -1,0 +1,10 @@
+{
+  "agent": "ashley",
+  "last_seen": "2026-07-14T17:31:19Z",
+  "status": "online",
+  "current_task": "hermes gateway run - Slack connected",
+  "model_in_use": "deepseek-v4-flash",
+  "results_today": 0,
+  "errors_today": 0,
+  "session_started": "2026-07-14T17:31:19Z"
+}

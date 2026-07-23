@@ -1,1 +1,10 @@
-{"agent": "claire", "status": "offline", "last_seen": null, "current_task": null, "model_in_use": null, "results_today": 0, "errors_today": 0, "session_started": null}
+{
+  "agent": "claire",
+  "last_seen": "2026-07-23T13:52:00Z",
+  "status": "online",
+  "current_task": "FLEET reconciliation: verify Claire, Mike, and Mighty truth",
+  "model_in_use": "codex",
+  "results_today": 0,
+  "errors_today": 0,
+  "session_started": "2026-07-23T13:43:31Z"
+}

@@ -78,7 +78,7 @@ brian:
   device: Dell Vostro 15 3510 (i7-1165G7, 16GB RAM, Intel Iris Xe)
   tailscale_ip: TBD
   tailscale: brian.tailnet
-  state: provisioned                   # runtime target; NOTE still blocked_by Tailscale below (registered-in-practice until it's live)
+  state: registered                    # provisioned gate = "Tailscale + tags live" (M016 spec lifecycle); NOT passed yet — see blocked_by. Advances to provisioned once Tailscale is up.
   discord_identity: brian-bot
   infisical_identity: brian-runtime    # planned — INFRA-01
   status: provisioning

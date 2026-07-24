@@ -1,21 +1,52 @@
 # fleet/registry.yaml — who each agent is, what tools they use, what they produce
 # Read by all agents at session start. Written only by Kenneth/Claire.
+#
+# Unified capability grant model (M016 spec 2026-07-23 § Unified capability grant model):
+#   grants[]    — capability tokens this agent may exercise. A task/manifest may only be
+#                 routed to an agent whose grants ⊇ the task capability + manifest
+#                 grants_required. Derived conservatively from `capabilities` + role.
+#   forbidden[] — hard registry-level denials. A manifest can NARROW an agent's grants,
+#                 never WIDEN them; forbidden always wins over any grant.
+#   state       — lifecycle state (M016 spec § Agent lifecycle states):
+#                 registered → provisioned → probation → ready → degraded → retired.
+#   discord_identity / infisical_identity — one declaration from which Discord + Infisical
+#                 scopes derive. Infisical machine identities are `planned` (INFRA-01, not
+#                 yet provisioned); names are reserved here so manifests can reference them.
+#   tailscale   — MagicDNS name (IP kept in tailscale_ip for backward compat).
+#
+# EDIT-SURFACE NOTE (decided 2026-07-23, M016 spec Revision pt 3): the fleet registry's
+# canonical EDIT SURFACE is moving to A008 (AG_APP/A008_Agentic OS/registry/agents.yaml);
+# A008 CI will compile + publish this file into MightyOS so the 5-min device git-pull
+# distribution channel keeps working. Until that CI-publish step exists, this file remains
+# both edit surface and distribution channel. Do not fork a second registry.
 
 claire:
   device: MacBook M1 Max 32GB
   tailscale_ip: local
+  tailscale: claire.tailnet
+  state: ready
+  discord_identity: claire-bot
+  infisical_identity: claire-runtime   # planned — Infisical machine identity not yet provisioned (INFRA-01)
   primary_model: claude-sonnet-4-6
   fallback_model: claude-opus-4-8
   capabilities: [dev, orchestration, browser-automation, email-pipeline]
+  grants: [dev, orchestration, browser-automation, email-draft, social-draft, crm.write, publish]
+  forbidden: []                        # orchestrator / chief-of-staff — no hard denials
   produces: code, plans, email drafts
   expected_daily_output: varies
 
 mike:
   device: Dell Vostro 7500 Windows (i7, 16GB, GTX 1650 4GB)
   tailscale_ip: 100.73.8.31
+  tailscale: mike.tailnet
+  state: ready
+  discord_identity: mike-bot
+  infisical_identity: mike-runtime     # planned — INFRA-01
   primary_model: llama3.2:3b
   fallback_model: deepseek-chat
   capabilities: [google-maps-scraping, lead-gen, gpu-helper, contenthub-render-qa]
+  grants: [lead-scrape, social-draft, gpu-helper, contenthub-render-qa]
+  forbidden: [publish, email.send, crm.write]   # scraper/worker — lead-scrape posts leads via its own channel, not a general CRM-write grant
   produces: leads → Twenty CRM POST /graphql (GraphQL createLead) — see fleet/pipeline-contracts.md
   schema:
     businessName: string
@@ -31,23 +62,42 @@ mike:
 mighty:
   device: Hostinger KVM2 VPS (2vCPU / 8GB RAM)
   tailscale_ip: 100.66.96.51
+  tailscale: mighty.tailnet
+  state: ready
+  discord_identity: mighty-bot
+  infisical_identity: mighty-runtime   # planned — INFRA-01
   primary_model: deepseek-chat
   fallback_model: claude-haiku-4-5
   capabilities: [always-on-cron, slack-bridge, sequences, fleet-monitor]
+  grants: [always-on-cron, slack-bridge, sequences, fleet-monitor, email.send, crm.write]
+  forbidden: [publish]                 # sends outreach + enrolls leads (crm.write) but does not publish social
   produces: emails sent, leads enrolled, fleet digest
   expected_daily_output: 50 emails sent
 
 brian:
   device: Dell Vostro 15 3510 (i7-1165G7, 16GB RAM, Intel Iris Xe)
   tailscale_ip: TBD
+  tailscale: brian.tailnet
+  state: provisioned                   # runtime target; NOTE still blocked_by Tailscale below (registered-in-practice until it's live)
+  discord_identity: brian-bot
+  infisical_identity: brian-runtime    # planned — INFRA-01
   status: provisioning
   capabilities: [contenthub-scanner, light-cron, outreach-sending]
+  grants: [contenthub-scanner, light-cron, outreach-sending, email.send]   # sender role — email.send is a grant here, not forbidden
+  forbidden: [publish, crm.write]
   role: always-on-cpu-network-box
   blocked_by: Tailscale setup
 
 lucy:
   device: MacBook M5 128GB (arriving ~late June 2026)
+  tailscale_ip: TBD
+  tailscale: lucy.tailnet
+  state: registered
+  discord_identity: lucy-bot
+  infisical_identity: lucy-runtime     # planned — INFRA-01
   capabilities: [local-llm-endpoint, contenthub-renders, heavy-compute]
+  grants: [local-llm-endpoint, contenthub-renders, heavy-compute]
+  forbidden: [publish, email.send, crm.write]   # compute box — no business-action grants
   status: incoming
 
 ashley:
@@ -57,3 +107,6 @@ ashley:
   capabilities: [warm-email-marketing, campaign-management, mautic-operations]
   produces: email campaigns, lead nurturing, engagement tracking
   expected_daily_output: warm email sequences
+  # NOTE: grant-model fields (state/grants/forbidden/identities) not yet assigned —
+  # ashley was added out of the M016 build-item-1 scope (claire/mike/mighty/brian/lucy).
+  # Extend in a follow-up so the registry is uniform.

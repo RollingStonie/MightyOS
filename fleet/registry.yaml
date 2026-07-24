@@ -101,12 +101,19 @@ lucy:
   status: incoming
 
 ashley:
-  device: Hostinger KVM2 VPS (2vCPU / 8GB RAM)
-  tailscale_ip: 100.66.96.51
+  device: vps-profile                  # Hermes profile on mighty's Hostinger KVM2 VPS (2vCPU / 8GB RAM) — not a separate box
+  tailscale_ip: 100.66.96.51           # shares mighty's VPS host
+  tailscale: mighty.tailnet            # co-resident on mighty's VPS
+  state: ready
+  infisical_identity: ashley-runtime   # planned — INFRA-01 (machine identity not yet provisioned)
   primary_model: deepseek-v4-flash
+  comms: slack-only                    # channel C0BHCCP923B (#agent-ashley) — no Discord identity; outreach/employee surface is Slack only
   capabilities: [warm-email-marketing, campaign-management, mautic-operations]
+  grants: [email.send, crm.write, mautic-ops]
+  forbidden: [publish, lead-scrape, sysadmin, docker-admin]
   produces: email campaigns, lead nurturing, engagement tracking
   expected_daily_output: warm email sequences
-  # NOTE: grant-model fields (state/grants/forbidden/identities) not yet assigned —
-  # ashley was added out of the M016 build-item-1 scope (claire/mike/mighty/brian/lucy).
-  # Extend in a follow-up so the registry is uniform.
+  # RISK (2026-07-24 hardening audit): ashley's gateway runs as ROOT on the VPS
+  # (systemd unit ashley-gateway.service, User=root). forbidden:[sysadmin, docker-admin]
+  # is registry-level intent only — NOT OS-enforced while running as root. Pending
+  # migration to a dedicated unprivileged user (see M016 hardening receipt / migration plan).

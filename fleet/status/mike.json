@@ -1,6 +1,6 @@
 {
   "agent": "mike",
-  "last_seen": "2026-07-25T12:17:15Z",
+  "last_seen": "2026-07-25T12:52:14Z",
   "status": "online",
   "current_task": "auto-detected: C:\\\\Python314\\\\python.exe -u C:\\hermes\\bot.py",
   "model_in_use": "llama3.2:3b",

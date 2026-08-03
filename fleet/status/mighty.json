@@ -1,8 +1,8 @@
 {
   "agent": "mighty",
-  "last_seen": "2026-08-03T18:48:33Z",
-  "status": "online",
-  "current_task": "auto-detected: /usr/bin/python3 /home/kenneth/hermes/sync/fleet_monitor.py --check",
+  "last_seen": "2026-08-03T19:18:41Z",
+  "status": "idle",
+  "current_task": "idle (no current_task.txt set)",
   "model_in_use": "unknown",
   "results_today": 0,
   "errors_today": 0,

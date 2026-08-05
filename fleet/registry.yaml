@@ -14,6 +14,13 @@
 #                 yet provisioned); names are reserved here so manifests can reference them.
 #   tailscale   — MagicDNS name (IP kept in tailscale_ip for backward compat).
 #
+# PLATFORM BOUNDARY (decided 2026-08-05): QM is the preferred employee-facing
+# platform for a gated pilot; it is NOT a fleet agent and therefore has no row
+# in this registry. A008 remains the governance/delivery kernel, Plane remains
+# the sole company work ledger, and Hermes remains the edge runtime for the
+# device/profile identities below. Buzz is reference-only during the QM pilot.
+# No Mike/Mighty service was changed when this decision was recorded.
+#
 # EDIT-SURFACE NOTE (decided 2026-07-23, M016 spec Revision pt 3): the fleet registry's
 # canonical EDIT SURFACE is moving to A008 (AG_APP/A008_Agentic OS/registry/agents.yaml);
 # A008 CI will compile + publish this file into MightyOS so the 5-min device git-pull
@@ -47,6 +54,10 @@ mike:
   capabilities: [google-maps-scraping, lead-gen, gpu-helper, contenthub-render-qa]
   grants: [lead-scrape, social-draft, gpu-helper, contenthub-render-qa]
   forbidden: [publish, email.send, crm.write]   # scraper/worker — lead-scrape posts leads via its own channel, not a general CRM-write grant
+  hermes_home: 'C:\Users\Jomo\AppData\Local\hermes'  # live-verified 2026-08-05; active CLI/gateway home
+  service_workdir: 'C:\hermes'                         # bot/project code; deliberately separate from HERMES_HOME
+  legacy_home_candidate: 'C:\Users\Jomo\.hermes'     # audit consumers + back up before any cleanup; do not merge/delete from registry alone
+  profile_inventory_status: path-split-remediation-required  # Heartbeat/gateway use AppData; Watchdog still forces legacy .hermes
   produces: leads → Twenty CRM POST /graphql (GraphQL createLead) — see fleet/pipeline-contracts.md
   schema:
     businessName: string
@@ -71,6 +82,10 @@ mighty:
   capabilities: [always-on-cron, slack-bridge, sequences, fleet-monitor]
   grants: [always-on-cron, slack-bridge, sequences, fleet-monitor, email.send, crm.write]
   forbidden: [publish]                 # sends outreach + enrolls leads (crm.write) but does not publish social
+  hermes_home: null                    # do not guess: verify service env + process command lines read-only first
+  hermes_home_status: read-only-verification-required
+  configured_systemd_workdir: /root    # ashley-gateway.service is inactive/dead as of 2026-08-05
+  active_runtime_status: manual-root-processes  # Ashley and Finn are separate root-owned manual gateways; do not restart the dead unit over them
   produces: emails sent, leads enrolled, fleet digest
   expected_daily_output: 50 emails sent
 
@@ -89,16 +104,31 @@ brian:
   blocked_by: Tailscale setup
 
 lucy:
-  device: MacBook M5 128GB (arriving ~late June 2026)
+  device: MacBook M5 128GB (planned stationary home anchor)
   tailscale_ip: TBD
   tailscale: lucy.tailnet
   state: registered
-  discord_identity: lucy-bot
+  discord_identity: null               # compute host does not earn a bot identity by default
   infisical_identity: lucy-runtime     # planned — INFRA-01
-  capabilities: [local-llm-endpoint, contenthub-renders, heavy-compute]
-  grants: [local-llm-endpoint, contenthub-renders, heavy-compute]
-  forbidden: [publish, email.send, crm.write]   # compute box — no business-action grants
-  status: incoming
+  capabilities: [local-llm-endpoint, contenthub-renders, heavy-compute, trading-research, backtesting, nightshift-worker]
+  grants: [local-llm-endpoint, contenthub-renders, heavy-compute, trading-research, backtesting, nightshift-worker]
+  forbidden: [publish, email.send, crm.write, trading.execute]   # research/compute only until a separately approved trading-execution design exists
+  status: planned
+  role: stationary always-on compute anchor; ContentHub rendering; trading research/backtesting; background agent work
+
+luna:
+  device: MacBook M5 128GB (planned portable machine)
+  tailscale_ip: TBD
+  tailscale: luna.tailnet
+  state: registered
+  discord_identity: null               # portable machine does not earn a bot identity by default
+  infisical_identity: luna-runtime      # planned — provision only during approved onboarding
+  capabilities: [portable-dev, local-llm-endpoint, coding-worker, client-demos]
+  grants: [dev, portable-dev, local-llm-endpoint, coding-worker]
+  forbidden: [publish, email.send, crm.write, trading.execute]
+  status: planned
+  role: Kenneth portable development/reasoning machine; on-demand coding worker
+  expected_daily_output: on demand
 
 ashley:
   device: vps-profile                  # Hermes profile on mighty's Hostinger KVM2 VPS (2vCPU / 8GB RAM) — not a separate box
@@ -111,6 +141,9 @@ ashley:
   capabilities: [warm-email-marketing, campaign-management, mautic-operations]
   grants: [email.send, crm.write, mautic-ops]
   forbidden: [publish, lead-scrape, sysadmin, docker-admin]
+  hermes_profile: ashley
+  profile_path_observed: /root/.hermes/profiles/ashley
+  hermes_home_status: read-only-verification-required  # confirm systemd environment; profile path alone does not prove HERMES_HOME
   produces: email campaigns, lead nurturing, engagement tracking
   expected_daily_output: warm email sequences
   # RISK (2026-07-24 hardening audit): ashley's gateway runs as ROOT on the VPS

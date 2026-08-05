@@ -304,8 +304,11 @@ def verify_watcher_source(plan: dict[str, Any], root: Path, *, stat_fn=os.stat, 
 
 
 def verify_runtime_watcher_source(plan: dict[str, Any], root: Path) -> None:
-    # The escape hatch is test-only: it is injected by this repository's fake-root harness.
-    verify_watcher_source(plan, root, enforce_owner=os.environ.get("LUCY_BOOTSTRAP_TEST_FAKE_ROOT") != "1")
+    # The escape hatch is constrained to the unittest temporary-root harness. A real root
+    # (including any deployment root outside the system temp directory) always uses os.stat.
+    resolved = root.resolve()
+    fake_root = os.environ.get("LUCY_BOOTSTRAP_TEST_FAKE_ROOT") == "1" and resolved.is_relative_to(Path(tempfile.gettempdir()).resolve())
+    verify_watcher_source(plan, root, enforce_owner=not fake_root)
 
 
 def write_receipt_atomically(root: Path, plan: dict[str, Any], adapter: Path) -> Path:

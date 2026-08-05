@@ -1,8 +1,8 @@
 {
   "agent": "mighty",
-  "last_seen": "2026-08-05T20:30:16Z",
-  "status": "idle",
-  "current_task": "idle (no current_task.txt set)",
+  "last_seen": "2026-08-05T21:00:24Z",
+  "status": "online",
+  "current_task": "auto-detected: /usr/bin/python3 /home/kenneth/hermes/sync/lead_ingest.py",
   "model_in_use": "unknown",
   "results_today": 0,
   "errors_today": 0,

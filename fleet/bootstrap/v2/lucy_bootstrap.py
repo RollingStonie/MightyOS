@@ -34,6 +34,7 @@ EXPECTED_ACCOUNT = "lucy-compute"
 EXPECTED_LABELS = ["com.mightyos.lucy.watcher", "com.mightyos.lucy.render-worker"]
 EXPECTED_GRANTS = {"backtesting", "contenthub-renders", "heavy-compute", "local-llm-endpoint", "nightshift-worker", "trading-research"}
 EXPECTED_DENIALS = {"crm.write", "email.send", "publish", "trading.execute"}
+WATCHER_SOURCE = {"path": "opt/mightyos/a008/tools/watcher/agent_watcher.py", "sha256": "eb9c2b7a18eec0f066eddb2c0e3104243dd80af084b20c5e8e98748b573f5339", "mode": "0644", "owner": "root:wheel"}
 
 
 class BootstrapError(RuntimeError):
@@ -104,7 +105,7 @@ def reject_secret_channels() -> None:
 
 
 def validate_manifest(manifest: dict[str, Any], policy: dict[str, set[str]]) -> None:
-    expected_top = {"schema_version", "agent", "role", "service_account", "required_grants", "denied_grants", "lifecycle", "modules", "network", "secrets", "hermes", "launchd"}
+    expected_top = {"schema_version", "agent", "role", "service_account", "watcher_source", "required_grants", "denied_grants", "lifecycle", "modules", "network", "secrets", "hermes", "launchd"}
     if set(manifest) != expected_top:
         raise BootstrapError("manifest schema is closed; unknown or missing top-level fields")
     if manifest.get("schema_version") != 2 or manifest.get("agent") != "lucy":
@@ -131,6 +132,8 @@ def validate_manifest(manifest: dict[str, Any], policy: dict[str, set[str]]) -> 
     account = manifest.get("service_account")
     if account != EXPECTED_ACCOUNT:
         raise BootstrapError("a non-root dedicated service_account is required")
+    if manifest.get("watcher_source") != WATCHER_SOURCE:
+        raise BootstrapError("watcher source must match the reviewed immutable digest and root-owned mode contract")
     if manifest.get("secrets") != {"required_names": ["INFISICAL_MACHINE_IDENTITY_TOKEN"], "allowed_scopes": ["/lucy/runtime"]}:
         raise BootstrapError("Lucy requires exactly the reviewed Infisical secret name and scope")
     names = manifest["secrets"]["required_names"]
@@ -221,6 +224,7 @@ def build_plan(manifest: dict[str, Any], root: Path, owner_uid: str | None) -> d
         "secret_names": manifest["secrets"]["required_names"], "secret_scopes": manifest["secrets"]["allowed_scopes"],
         "modules": manifest["modules"], "resources": [{**resource, "content_sha256": hashlib.sha256(resource["content"].encode()).hexdigest()} for resource in resources],
         "binding": {"address": manifest["network"]["bind_address"], "port": 8109, "tailscale_acl": "tag:lucy-compute", "tailscale_tag": "tag:lucy-compute"},
+        "watcher_source": manifest["watcher_source"],
         "lifecycle_required_evidence": manifest["lifecycle"]["required_evidence"],
         "hermes_enabled": False,
     }
@@ -259,6 +263,8 @@ def validate_receipt(receipt: dict[str, Any], plan: dict[str, Any], root: Path) 
         raise BootstrapError("receipt does not belong to Lucy bootstrap v2")
     if receipt.get("root") != str(root.resolve()) or receipt.get("manifest_sha256") != plan["manifest_sha256"]:
         raise BootstrapError("receipt is not bound to this root and manifest")
+    if receipt.get("watcher_source") != plan["watcher_source"]:
+        raise BootstrapError("receipt watcher source facts do not match the reviewed artifact")
     if not isinstance(paths, list) or [item.get("path") for item in paths if isinstance(item, dict)] != expected_paths:
         raise BootstrapError("receipt resources do not match the reviewed manifest plan")
     for item in paths:
@@ -278,13 +284,20 @@ def atomic_json(path: Path, value: dict[str, Any]) -> None:
     os.replace(temporary, path)
 
 
+def verify_watcher_source(plan: dict[str, Any], root: Path) -> None:
+    source = plan["watcher_source"]
+    path = root / source["path"]
+    if not path.is_file() or hashlib.sha256(path.read_bytes()).hexdigest() != source["sha256"] or format(path.stat().st_mode & 0o777, "04o") != source["mode"]:
+        raise BootstrapError("watcher source digest or non-writable mode drifted")
+
+
 def write_receipt_atomically(root: Path, plan: dict[str, Any], adapter: Path) -> Path:
     directory = state_dir(root)
     directory.mkdir(parents=True, exist_ok=True)
     receipt = {
         "schema_version": 2, "agent": "lucy", "status": "applied",
         "manifest_sha256": plan["manifest_sha256"], "root": plan["root"],
-        "service_account": plan["service_account"], "resources": [{key: r[key] for key in ("path", "content_sha256", "mode", "owner", "launch_domain", "run_as")} for r in plan["resources"]], "binding": plan["binding"],
+        "service_account": plan["service_account"], "resources": [{key: r[key] for key in ("path", "content_sha256", "mode", "owner", "launch_domain", "run_as")} for r in plan["resources"]], "binding": plan["binding"], "watcher_source": plan["watcher_source"],
         "adapter": adapter.name,
     }
     destination = receipt_path(root)
@@ -311,7 +324,7 @@ def run_adapter(adapter: Path, operation: str, plan: dict[str, Any], root: Path)
         result = json.loads(completed.stdout)
     except json.JSONDecodeError as error:
         raise BootstrapError("runtime adapter returned invalid attestation") from error
-    if result.get("binding") != plan["binding"] or result.get("resources") != [{key: r[key] for key in ("path", "content_sha256", "mode", "owner", "launch_domain", "run_as")} for r in plan["resources"]]:
+    if result.get("binding") != plan["binding"] or result.get("watcher_source") != plan["watcher_source"] or result.get("resources") != [{key: r[key] for key in ("path", "content_sha256", "mode", "owner", "launch_domain", "run_as")} for r in plan["resources"]]:
         raise BootstrapError("runtime adapter attestation does not match the approved plan")
 
 
@@ -355,11 +368,14 @@ def command_apply(args: argparse.Namespace) -> int:
     receipt = load_receipt(args.root)
     if receipt and receipt.get("status") == "applied" and receipt.get("manifest_sha256") == plan["manifest_sha256"]:
         validate_receipt(receipt, plan, args.root)
+        verify_watcher_source(plan, args.root)
         drift = [r["path"] for r in plan["resources"] if not (args.root / r["path"]).is_file() or hashlib.sha256((args.root / r["path"]).read_bytes()).hexdigest() != r["content_sha256"] or format((args.root / r["path"]).stat().st_mode & 0o777, "04o") != r["mode"]]
         if drift:
             raise BootstrapError(f"idempotency denied: receipt resources drifted: {drift}")
         print("ALREADY_APPLIED: matching receipt exists; no mutation requested")
         return 0
+    run_adapter(args.approved_runtime_adapter, "preflight", plan, args.root)
+    verify_watcher_source(plan, args.root)
     assert_managed(plan, receipt, args.root)
     run_adapter(args.approved_runtime_adapter, "apply", plan, args.root)
     missing = [r["path"] for r in plan["resources"] if not (args.root / r["path"]).is_file() or hashlib.sha256((args.root / r["path"]).read_bytes()).hexdigest() != r["content_sha256"] or format((args.root / r["path"]).stat().st_mode & 0o777, "04o") != r["mode"]]
@@ -380,6 +396,7 @@ def command_health(args: argparse.Namespace) -> int:
         raise BootstrapError("health denied: no applied receipt")
     plan = build_plan(manifest, args.root, args.owner_uid)
     validate_receipt(receipt, plan, args.root)
+    verify_watcher_source(plan, args.root)
     if receipt.get("binding") != plan["binding"] or receipt.get("resources") != [{key: r[key] for key in ("path", "content_sha256", "mode", "owner", "launch_domain", "run_as")} for r in plan["resources"]]:
         raise BootstrapError("health denied: receipt resource facts do not match the approved plan")
     missing = [r["path"] for r in plan["resources"] if not (args.root / r["path"]).is_file() or hashlib.sha256((args.root / r["path"]).read_bytes()).hexdigest() != r["content_sha256"] or format((args.root / r["path"]).stat().st_mode & 0o777, "04o") != r["mode"]]
@@ -412,7 +429,7 @@ def command_rollback(args: argparse.Namespace) -> int:
     canonical = build_plan(manifest, args.root, args.owner_uid)
     validate_receipt(receipt, canonical, args.root)
     approved_adapter(policy, args.approved_runtime_adapter)
-    plan = {"agent": "lucy", "manifest_sha256": receipt["manifest_sha256"], "resources": receipt["resources"], "binding": receipt["binding"]}
+    plan = {"agent": "lucy", "manifest_sha256": receipt["manifest_sha256"], "resources": receipt["resources"], "binding": receipt["binding"], "watcher_source": receipt["watcher_source"]}
     run_adapter(args.approved_runtime_adapter, "rollback", plan, args.root)
     receipt["status"] = "rolled_back"
     atomic_json(receipt_path(args.root), receipt)
@@ -434,7 +451,7 @@ def command_offboard(args: argparse.Namespace) -> int:
     canonical = build_plan(manifest, args.root, args.owner_uid)
     validate_receipt(receipt, canonical, args.root)
     approved_adapter(policy, args.approved_runtime_adapter)
-    plan = {"agent": "lucy", "manifest_sha256": receipt["manifest_sha256"], "resources": receipt["resources"], "binding": receipt["binding"]}
+    plan = {"agent": "lucy", "manifest_sha256": receipt["manifest_sha256"], "resources": receipt["resources"], "binding": receipt["binding"], "watcher_source": receipt["watcher_source"]}
     run_adapter(args.approved_runtime_adapter, "offboard", plan, args.root)
     receipt["status"] = "offboarded"
     atomic_json(receipt_path(args.root), receipt)

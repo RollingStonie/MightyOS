@@ -12,6 +12,7 @@ CLI = REPO / "fleet/bootstrap/v2/lucy_bootstrap.py"
 MANIFEST = REPO / "fleet/bootstrap/manifests/lucy.json"
 REGISTRY = REPO / "fleet/registry.yaml"
 POLICY = REPO / "fleet/bootstrap/v2/registry-policy.json"
+WATCHER_SOURCE = Path('/Users/kenneth/AG_Mission/AG_APP/A008_Agentic OS/tools/watcher/agent_watcher.py')
 
 
 class LucyBootstrapV2Tests(unittest.TestCase):
@@ -27,21 +28,25 @@ class LucyBootstrapV2Tests(unittest.TestCase):
 
     def fake_adapter(self, directory):
         adapter = directory / "fake-mutator.py"
+        payload = WATCHER_SOURCE.read_bytes().hex()
         adapter.write_text("""#!/usr/bin/env python3
 import json, pathlib, sys
 operation, plan_path, root = sys.argv[1:]
 plan = json.loads(pathlib.Path(plan_path).read_text())
 root = pathlib.Path(root)
+source = root / plan['watcher_source']['path']
+if operation == 'preflight':
+    source.parent.mkdir(parents=True, exist_ok=True); source.write_bytes(bytes.fromhex('""" + payload + """')); source.chmod(int(plan['watcher_source']['mode'], 8))
 for resource in plan['resources']:
     path = root / resource['path']
     if operation == 'apply':
         path.parent.mkdir(parents=True, exist_ok=True); path.write_text(resource.get('content', 'managed')); path.chmod(int(resource['mode'], 8))
     elif operation in {'rollback', 'offboard'}:
         path.unlink(missing_ok=True)
-if operation == 'apply':
-    print(json.dumps({'binding': plan['binding'], 'resources': [{key: r[key] for key in ('path', 'content_sha256', 'mode', 'owner', 'launch_domain', 'run_as')} for r in plan['resources']]}))
+if operation == 'apply' or operation == 'preflight':
+    print(json.dumps({'binding': plan['binding'], 'watcher_source': plan['watcher_source'], 'resources': [{key: r[key] for key in ('path', 'content_sha256', 'mode', 'owner', 'launch_domain', 'run_as')} for r in plan['resources']]}))
 else:
-    print(json.dumps({'binding': plan['binding'], 'resources': plan['resources']}))
+    print(json.dumps({'binding': plan['binding'], 'watcher_source': plan['watcher_source'], 'resources': plan['resources']}))
 """)
         adapter.chmod(adapter.stat().st_mode | stat.S_IXUSR)
         return adapter
@@ -231,6 +236,18 @@ else:
         self.assertEqual(failed.returncode, 2)
         self.assertNotIn('SECRET_SENTINEL', failed.stderr)
         self.assertIn('output redacted', failed.stderr)
+
+    def test_watcher_source_digest_and_mode_drift_block_apply_reuse_and_health(self):
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw) / 'fake-root'; adapter = self.fake_adapter(Path(raw))
+            self.assertEqual(self.run_cli(root, 'apply', '--approved-runtime-adapter', str(adapter)).returncode, 0)
+            source = root / 'opt/mightyos/a008/tools/watcher/agent_watcher.py'
+            source.write_text('drift'); source.chmod(0o666)
+            reused = self.run_cli(root, 'apply', '--approved-runtime-adapter', str(adapter))
+            health = self.run_cli(root, 'health')
+        self.assertEqual(reused.returncode, 2)
+        self.assertIn('watcher source digest', reused.stderr)
+        self.assertEqual(health.returncode, 2)
 
 
 if __name__ == '__main__':

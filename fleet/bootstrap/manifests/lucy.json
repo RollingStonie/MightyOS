@@ -1,0 +1,34 @@
+{
+  "schema_version": 2,
+  "agent": "lucy",
+  "role": "stationary-compute-worker",
+  "service_account": "lucy-compute",
+  "lifecycle": {
+    "initial": "registered",
+    "promotion_path": ["registered", "provisioned", "probation", "ready"],
+    "required_evidence": ["tailscale_scoped", "local_health", "reboot_survived", "probation_72h"]
+  },
+  "modules": [
+    "tailscale-node",
+    "a008-watcher",
+    "local-llm-endpoint",
+    "contenthub-render-worker",
+    "background-worker",
+    "trading-research"
+  ],
+  "network": {
+    "watcher_port": 8109,
+    "bind_address": "127.0.0.1",
+    "tailscale_acl": "tag:lucy-compute"
+  },
+  "secrets": {
+    "required_names": ["INFISICAL_MACHINE_IDENTITY_TOKEN"],
+    "allowed_scopes": ["/lucy/runtime"]
+  },
+  "hermes": {"enabled": false},
+  "launchd": {
+    "kind": "daemon",
+    "labels": ["com.mightyos.lucy.watcher", "com.mightyos.lucy.render-worker"],
+    "run_at_load": false
+  }
+}

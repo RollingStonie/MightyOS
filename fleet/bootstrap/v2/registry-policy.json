@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "source": "fleet/registry.yaml",
+  "source_sha256": "b55ed13478b453ce48fb75f9ae2d80045dda5cd36b72c8b32350a8dbaab7923a",
+  "agent": "lucy",
+  "discord_identity": null,
+  "grants": ["backtesting", "contenthub-renders", "heavy-compute", "local-llm-endpoint", "nightshift-worker", "trading-research"],
+  "forbidden": ["crm.write", "email.send", "publish", "trading.execute"]
+}

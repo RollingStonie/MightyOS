@@ -15,7 +15,14 @@ POLICY = REPO / "fleet/bootstrap/v2/registry-policy.json"
 
 class LucyBootstrapV2Tests(unittest.TestCase):
     def run_cli(self, root, *args):
-        return subprocess.run(["python3", str(CLI), "--root", str(root), "--manifest", str(MANIFEST), "--registry", str(REGISTRY), "--policy", str(POLICY), *args], text=True, capture_output=True)
+        command = ["python3", str(CLI), "--root", str(root), "--manifest", str(MANIFEST), "--registry", str(REGISTRY), "--policy", str(POLICY), *args]
+        if '--approved-runtime-adapter' in args:
+            adapter = Path(args[args.index('--approved-runtime-adapter') + 1])
+            policy = json.loads(POLICY.read_text())
+            policy['approved_adapters'] = [{'id': adapter.name, 'version': 'test-v1', 'sha256': __import__('hashlib').sha256(adapter.read_bytes()).hexdigest()}]
+            path = root.parent / 'approved-policy.json'; path.parent.mkdir(parents=True, exist_ok=True); path.write_text(json.dumps(policy))
+            command[command.index('--policy') + 1] = str(path)
+        return subprocess.run(command, text=True, capture_output=True)
 
     def fake_adapter(self, directory):
         adapter = directory / "fake-mutator.py"
@@ -27,9 +34,13 @@ root = pathlib.Path(root)
 for resource in plan['resources']:
     path = root / resource['path']
     if operation == 'apply':
-        path.parent.mkdir(parents=True, exist_ok=True); path.write_text(resource.get('content', 'managed'))
+        path.parent.mkdir(parents=True, exist_ok=True); path.write_text(resource.get('content', 'managed')); path.chmod(0o644)
     elif operation in {'rollback', 'offboard'}:
         path.unlink(missing_ok=True)
+if operation == 'apply':
+    print(json.dumps({'binding': plan['binding'], 'resources': [{key: r[key] for key in ('path', 'content_sha256', 'mode', 'owner', 'launch_domain', 'run_as')} for r in plan['resources']]}))
+else:
+    print(json.dumps({'binding': plan['binding'], 'resources': plan['resources']}))
 """)
         adapter.chmod(adapter.stat().st_mode | stat.S_IXUSR)
         return adapter
@@ -84,6 +95,9 @@ for resource in plan['resources']:
                 'manifest_sha256': __import__('hashlib').sha256(json.dumps(json.loads(MANIFEST.read_text()), sort_keys=True, separators=(',', ':')).encode()).hexdigest(),
                 'tailscale_scoped': True, 'local_health': True, 'reboot_survived': True, 'probation_72h': True,
             }
+            plan = json.loads(self.run_cli(root, 'plan').stdout)
+            evidence['binding'] = plan['binding']
+            evidence['launchd'] = [{key: r[key] for key in ('path', 'content_sha256', 'mode', 'owner', 'launch_domain', 'run_as')} for r in plan['resources']]
             evidence_path = root / '.mightyos/lucy-bootstrap-v2/lifecycle-evidence.json'
             evidence_path.write_text(json.dumps(evidence))
             health = self.run_cli(root, 'health')
@@ -134,7 +148,7 @@ for resource in plan['resources']:
             receipt_path.write_text(json.dumps(receipt))
             result = self.run_cli(root, 'offboard', '--approved-runtime-adapter', str(adapter))
         self.assertEqual(result.returncode, 2)
-        self.assertIn('receipt resources do not match', result.stderr)
+        self.assertIn('receipt contains invalid resource facts', result.stderr)
 
     def test_manifest_cannot_change_reviewed_launchd_targets(self):
         with tempfile.TemporaryDirectory() as raw:
@@ -143,6 +157,38 @@ for resource in plan['resources']:
             result = subprocess.run(['python3', str(CLI), 'validate', '--manifest', str(path)], text=True, capture_output=True)
         self.assertEqual(result.returncode, 2)
         self.assertIn('launchd labels', result.stderr)
+
+    def test_closed_manifest_rejects_scope_acl_grant_and_unknown_fields(self):
+        with tempfile.TemporaryDirectory() as raw:
+            for field, value in [('secrets', {'required_names': ['INFISICAL_MACHINE_IDENTITY_TOKEN'], 'allowed_scopes': ['/too-broad']}), ('network', {**json.loads(MANIFEST.read_text())['network'], 'tailscale_tag': 'tag:any'}), ('required_grants', ['dev'])]:
+                bad = json.loads(MANIFEST.read_text()); bad[field] = value
+                path = Path(raw) / f'{field}.json'; path.write_text(json.dumps(bad))
+                result = subprocess.run(['python3', str(CLI), 'validate', '--manifest', str(path)], text=True, capture_output=True)
+                self.assertEqual(result.returncode, 2)
+            bad = json.loads(MANIFEST.read_text()); bad['unexpected'] = True
+            path = Path(raw) / 'unknown.json'; path.write_text(json.dumps(bad))
+            self.assertEqual(subprocess.run(['python3', str(CLI), 'validate', '--manifest', str(path)], text=True, capture_output=True).returncode, 2)
+
+    def test_adapter_must_be_allowlisted_and_resource_drift_blocks_idempotency(self):
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw) / 'fake-root'; adapter = self.fake_adapter(Path(raw))
+            denied = subprocess.run(['python3', str(CLI), 'apply', '--root', str(root), '--approved-runtime-adapter', str(adapter)], text=True, capture_output=True)
+            self.assertEqual(denied.returncode, 2); self.assertIn('not allowlisted', denied.stderr)
+            self.assertEqual(self.run_cli(root, 'apply', '--approved-runtime-adapter', str(adapter)).returncode, 0)
+            target = root / 'Library/LaunchDaemons/com.mightyos.lucy.watcher.plist'; target.write_text('drift')
+            drift = self.run_cli(root, 'apply', '--approved-runtime-adapter', str(adapter))
+        self.assertEqual(drift.returncode, 2)
+
+    def test_owner_uid_is_removed_and_adapter_failure_is_redacted(self):
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw) / 'fake-root'; adapter = Path(raw) / 'loud-adapter.py'
+            adapter.write_text('#!/bin/sh\necho SECRET_SENTINEL >&2\nexit 1\n'); adapter.chmod(0o755)
+            uid = self.run_cli(root, 'plan', '--owner-uid', '501')
+            failed = self.run_cli(root, 'apply', '--approved-runtime-adapter', str(adapter))
+        self.assertEqual(uid.returncode, 2)
+        self.assertEqual(failed.returncode, 2)
+        self.assertNotIn('SECRET_SENTINEL', failed.stderr)
+        self.assertIn('output redacted', failed.stderr)
 
 
 if __name__ == '__main__':

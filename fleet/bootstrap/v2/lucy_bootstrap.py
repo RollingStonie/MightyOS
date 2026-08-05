@@ -32,6 +32,8 @@ FORBIDDEN_GRANTS = {"trading.execute", "publish", "email.send", "crm.write", "me
 SECRET_NAME = re.compile(r"^[A-Z][A-Z0-9_]{2,127}$")
 EXPECTED_ACCOUNT = "lucy-compute"
 EXPECTED_LABELS = ["com.mightyos.lucy.watcher", "com.mightyos.lucy.render-worker"]
+EXPECTED_GRANTS = {"backtesting", "contenthub-renders", "heavy-compute", "local-llm-endpoint", "nightshift-worker", "trading-research"}
+EXPECTED_DENIALS = {"crm.write", "email.send", "publish", "trading.execute"}
 
 
 class BootstrapError(RuntimeError):
@@ -74,7 +76,7 @@ def registry_lucy_policy(path: Path) -> dict[str, set[str]]:
     return {"grants": listed("grants"), "forbidden": listed("forbidden")}
 
 
-def validate_policy_projection(registry: Path, policy_path: Path, registry_policy: dict[str, set[str]]) -> None:
+def validate_policy_projection(registry: Path, policy_path: Path, registry_policy: dict[str, set[str]]) -> dict[str, Any]:
     policy = load_json(policy_path)
     source_hash = hashlib.sha256(registry.read_bytes()).hexdigest()
     if policy.get("source") != "fleet/registry.yaml" or policy.get("source_sha256") != source_hash:
@@ -84,6 +86,11 @@ def validate_policy_projection(registry: Path, policy_path: Path, registry_polic
     for key in ("grants", "forbidden"):
         if set(policy.get(key, [])) != registry_policy[key]:
             raise BootstrapError(f"registry policy projection parity failure for {key}")
+    if registry_policy["grants"] != EXPECTED_GRANTS or registry_policy["forbidden"] != EXPECTED_DENIALS:
+        raise BootstrapError("Lucy registry grants and denials must exactly match the reviewed role policy")
+    if not isinstance(policy.get("approved_adapters"), list):
+        raise BootstrapError("policy must declare an approved_adapters allowlist")
+    return policy
 
 
 def reject_secret_channels() -> None:
@@ -97,6 +104,9 @@ def reject_secret_channels() -> None:
 
 
 def validate_manifest(manifest: dict[str, Any], policy: dict[str, set[str]]) -> None:
+    expected_top = {"schema_version", "agent", "role", "service_account", "required_grants", "denied_grants", "lifecycle", "modules", "network", "secrets", "hermes", "launchd"}
+    if set(manifest) != expected_top:
+        raise BootstrapError("manifest schema is closed; unknown or missing top-level fields")
     if manifest.get("schema_version") != 2 or manifest.get("agent") != "lucy":
         raise BootstrapError("only schema v2 Lucy manifests are accepted")
     modules = manifest.get("modules")
@@ -106,22 +116,25 @@ def validate_manifest(manifest: dict[str, Any], policy: dict[str, set[str]]) -> 
     forbidden = set(modules) & FORBIDDEN_MODULES
     if unknown or forbidden:
         raise BootstrapError(f"unapproved modules: {sorted(unknown | forbidden)}")
-    if policy["forbidden"] & FORBIDDEN_GRANTS != {"trading.execute", "publish", "email.send", "crm.write"}:
+    if policy["forbidden"] != EXPECTED_DENIALS:
         raise BootstrapError("registry forbidden grants must retain Lucy's safety denials")
-    module_grants = {"local-llm-endpoint", "contenthub-renders", "heavy-compute", "trading-research", "backtesting", "nightshift-worker"}
-    if not module_grants <= policy["grants"]:
+    if policy["grants"] != EXPECTED_GRANTS or set(manifest["required_grants"]) != EXPECTED_GRANTS or set(manifest["denied_grants"]) != EXPECTED_DENIALS:
         raise BootstrapError("Lucy registry grants no longer match the role contract")
     if "trading.execute" in policy["grants"] or "trading.execute" not in policy["forbidden"]:
         raise BootstrapError("trading.execute must be forbidden, never granted")
-    if manifest.get("network", {}).get("bind_address") not in {"127.0.0.1", "::1"}:
+    if set(manifest.get("network", {})) != {"watcher_port", "bind_address", "tailscale_acl", "tailscale_tag"} or manifest["network"].get("bind_address") != "127.0.0.1":
         raise BootstrapError("network endpoints must bind localhost; Tailscale exposure needs a later contract")
     if manifest.get("network", {}).get("watcher_port") != 8109:
         raise BootstrapError("Lucy watcher must use port 8109")
+    if manifest["network"].get("tailscale_acl") != "tag:lucy-compute" or manifest["network"].get("tailscale_tag") != "tag:lucy-compute":
+        raise BootstrapError("Lucy requires the exact reviewed Tailscale tag and ACL")
     account = manifest.get("service_account")
     if account != EXPECTED_ACCOUNT:
         raise BootstrapError("a non-root dedicated service_account is required")
-    names = manifest.get("secrets", {}).get("required_names")
-    if not isinstance(names, list) or not names or not all(isinstance(n, str) and SECRET_NAME.fullmatch(n) for n in names):
+    if manifest.get("secrets") != {"required_names": ["INFISICAL_MACHINE_IDENTITY_TOKEN"], "allowed_scopes": ["/lucy/runtime"]}:
+        raise BootstrapError("Lucy requires exactly the reviewed Infisical secret name and scope")
+    names = manifest["secrets"]["required_names"]
+    if not isinstance(names, list) or not all(isinstance(n, str) and SECRET_NAME.fullmatch(n) for n in names):
         raise BootstrapError("secret staging accepts names only (UPPER_SNAKE_CASE), never values")
     serialized = canonical_json(manifest).decode("utf-8")
     if re.search(r"(?i)(sk-[a-z0-9]|token[=:][^\"]|password[=:][^\"]|authkey[=:][^\"])", serialized):
@@ -159,8 +172,8 @@ def launchd_plist(label: str, account: str, command: list[str], run_at_load: boo
 
 def build_plan(manifest: dict[str, Any], root: Path, owner_uid: str | None) -> dict[str, Any]:
     account = manifest["service_account"]
-    if owner_uid is not None and (not owner_uid.isdigit() or owner_uid == "0"):
-        raise BootstrapError("owner UID must be a non-root numeric UID")
+    if owner_uid is not None:
+        raise BootstrapError("owner UID is not accepted: Lucy uses a system LaunchDaemon with explicit UserName")
     labels = manifest["launchd"]["labels"]
     services = [
         (labels[0], ["/usr/bin/env", "python3", "-m", "agentic_os.watcher", "--port", "8109"]),
@@ -178,7 +191,8 @@ def build_plan(manifest: dict[str, Any], root: Path, owner_uid: str | None) -> d
         "schema_version": 2, "agent": "lucy", "mode": "plan", "root": str(root.resolve()),
         "manifest_sha256": manifest_hash(manifest), "service_account": account,
         "secret_names": manifest["secrets"]["required_names"], "secret_scopes": manifest["secrets"]["allowed_scopes"],
-        "modules": manifest["modules"], "resources": resources,
+        "modules": manifest["modules"], "resources": [{**resource, "content_sha256": hashlib.sha256(resource["content"].encode()).hexdigest()} for resource in resources],
+        "binding": {"address": manifest["network"]["bind_address"], "port": 8109, "tailscale_acl": "tag:lucy-compute", "tailscale_tag": "tag:lucy-compute"},
         "lifecycle_required_evidence": manifest["lifecycle"]["required_evidence"],
         "hermes_enabled": False,
     }
@@ -217,10 +231,12 @@ def validate_receipt(receipt: dict[str, Any], plan: dict[str, Any], root: Path) 
         raise BootstrapError("receipt does not belong to Lucy bootstrap v2")
     if receipt.get("root") != str(root.resolve()) or receipt.get("manifest_sha256") != plan["manifest_sha256"]:
         raise BootstrapError("receipt is not bound to this root and manifest")
-    if not isinstance(paths, list) or paths != expected_paths:
+    if not isinstance(paths, list) or [item.get("path") for item in paths if isinstance(item, dict)] != expected_paths:
         raise BootstrapError("receipt resources do not match the reviewed manifest plan")
-    for path in paths:
-        candidate = Path(path)
+    for item in paths:
+        if not isinstance(item, dict):
+            raise BootstrapError("receipt contains invalid resource facts")
+        candidate = Path(item["path"])
         if candidate.is_absolute() or ".." in candidate.parts:
             raise BootstrapError("receipt contains an unsafe resource path")
 
@@ -240,7 +256,7 @@ def write_receipt_atomically(root: Path, plan: dict[str, Any], adapter: Path) ->
     receipt = {
         "schema_version": 2, "agent": "lucy", "status": "applied",
         "manifest_sha256": plan["manifest_sha256"], "root": plan["root"],
-        "service_account": plan["service_account"], "resources": [r["path"] for r in plan["resources"]],
+        "service_account": plan["service_account"], "resources": [{key: r[key] for key in ("path", "content_sha256", "mode", "owner", "launch_domain", "run_as")} for r in plan["resources"]], "binding": plan["binding"],
         "adapter": adapter.name,
     }
     destination = receipt_path(root)
@@ -262,7 +278,21 @@ def run_adapter(adapter: Path, operation: str, plan: dict[str, Any], root: Path)
     finally:
         plan_file.unlink(missing_ok=True)
     if completed.returncode:
-        raise BootstrapError(f"runtime adapter {operation} failed: {completed.stderr.strip() or completed.stdout.strip()}")
+        raise BootstrapError(f"runtime adapter {operation} failed (output redacted)")
+    try:
+        result = json.loads(completed.stdout)
+    except json.JSONDecodeError as error:
+        raise BootstrapError("runtime adapter returned invalid attestation") from error
+    if result.get("binding") != plan["binding"] or result.get("resources") != [{key: r[key] for key in ("path", "content_sha256", "mode", "owner", "launch_domain", "run_as")} for r in plan["resources"]]:
+        raise BootstrapError("runtime adapter attestation does not match the approved plan")
+
+
+def approved_adapter(policy: dict[str, Any], adapter: Path) -> None:
+    digest = hashlib.sha256(adapter.read_bytes()).hexdigest()
+    for item in policy["approved_adapters"]:
+        if isinstance(item, dict) and item.get("id") == adapter.name and isinstance(item.get("version"), str) and item.get("sha256") == digest:
+            return
+    raise BootstrapError("runtime adapter is not allowlisted with an approved version and digest")
 
 
 def command_validate(args: argparse.Namespace) -> int:
@@ -290,16 +320,21 @@ def command_apply(args: argparse.Namespace) -> int:
     reject_secret_channels()
     manifest = load_json(args.manifest)
     registry_policy = registry_lucy_policy(args.registry)
-    validate_policy_projection(args.registry, args.policy, registry_policy)
+    policy = validate_policy_projection(args.registry, args.policy, registry_policy)
     validate_manifest(manifest, registry_policy)
     plan = build_plan(manifest, args.root, args.owner_uid)
+    approved_adapter(policy, args.approved_runtime_adapter)
     receipt = load_receipt(args.root)
     if receipt and receipt.get("status") == "applied" and receipt.get("manifest_sha256") == plan["manifest_sha256"]:
+        validate_receipt(receipt, plan, args.root)
+        drift = [r["path"] for r in plan["resources"] if not (args.root / r["path"]).is_file() or hashlib.sha256((args.root / r["path"]).read_bytes()).hexdigest() != r["content_sha256"] or format((args.root / r["path"]).stat().st_mode & 0o777, "04o") != r["mode"]]
+        if drift:
+            raise BootstrapError(f"idempotency denied: receipt resources drifted: {drift}")
         print("ALREADY_APPLIED: matching receipt exists; no mutation requested")
         return 0
     assert_managed(plan, receipt, args.root)
     run_adapter(args.approved_runtime_adapter, "apply", plan, args.root)
-    missing = [r["path"] for r in plan["resources"] if not (args.root / r["path"]).is_file()]
+    missing = [r["path"] for r in plan["resources"] if not (args.root / r["path"]).is_file() or hashlib.sha256((args.root / r["path"]).read_bytes()).hexdigest() != r["content_sha256"] or format((args.root / r["path"]).stat().st_mode & 0o777, "04o") != r["mode"]]
     if missing:
         raise BootstrapError(f"adapter did not create planned resources: {missing}")
     print(f"APPLIED: receipt={write_receipt_atomically(args.root, plan, args.approved_runtime_adapter)}")
@@ -310,19 +345,24 @@ def command_health(args: argparse.Namespace) -> int:
     reject_secret_channels()
     manifest = load_json(args.manifest)
     registry_policy = registry_lucy_policy(args.registry)
-    validate_policy_projection(args.registry, args.policy, registry_policy)
+    policy = validate_policy_projection(args.registry, args.policy, registry_policy)
     validate_manifest(manifest, registry_policy)
     receipt = load_receipt(args.root)
     if not receipt or receipt.get("status") != "applied":
         raise BootstrapError("health denied: no applied receipt")
     plan = build_plan(manifest, args.root, args.owner_uid)
     validate_receipt(receipt, plan, args.root)
-    missing = [path for path in receipt["resources"] if not (args.root / path).is_file()]
+    if receipt.get("binding") != plan["binding"] or receipt.get("resources") != [{key: r[key] for key in ("path", "content_sha256", "mode", "owner", "launch_domain", "run_as")} for r in plan["resources"]]:
+        raise BootstrapError("health denied: receipt resource facts do not match the approved plan")
+    missing = [r["path"] for r in plan["resources"] if not (args.root / r["path"]).is_file() or hashlib.sha256((args.root / r["path"]).read_bytes()).hexdigest() != r["content_sha256"] or format((args.root / r["path"]).stat().st_mode & 0o777, "04o") != r["mode"]]
     if missing:
         raise BootstrapError(f"health failed: missing managed resources {missing}")
     evidence = load_json(args.evidence)
     if evidence.get("manifest_sha256") != receipt["manifest_sha256"]:
         raise BootstrapError("health denied: lifecycle evidence is not bound to the applied manifest")
+    expected_facts = [{key: r[key] for key in ("path", "content_sha256", "mode", "owner", "launch_domain", "run_as")} for r in plan["resources"]]
+    if evidence.get("binding") != plan["binding"] or evidence.get("launchd") != expected_facts:
+        raise BootstrapError("health denied: adapter binding or launchd evidence is not enforceable against the approved plan")
     required = {"tailscale_scoped", "local_health", "reboot_survived", "probation_72h"}
     if {name for name in required if evidence.get(name) is True} != required:
         raise BootstrapError("health denied: lifecycle evidence is incomplete")
@@ -339,11 +379,12 @@ def command_rollback(args: argparse.Namespace) -> int:
         raise BootstrapError("rollback denied: no applied receipt")
     manifest = load_json(args.manifest)
     registry_policy = registry_lucy_policy(args.registry)
-    validate_policy_projection(args.registry, args.policy, registry_policy)
+    policy = validate_policy_projection(args.registry, args.policy, registry_policy)
     validate_manifest(manifest, registry_policy)
     canonical = build_plan(manifest, args.root, args.owner_uid)
     validate_receipt(receipt, canonical, args.root)
-    plan = {"agent": "lucy", "manifest_sha256": receipt["manifest_sha256"], "resources": [{"path": p} for p in receipt["resources"]]}
+    approved_adapter(policy, args.approved_runtime_adapter)
+    plan = {"agent": "lucy", "manifest_sha256": receipt["manifest_sha256"], "resources": receipt["resources"], "binding": receipt["binding"]}
     run_adapter(args.approved_runtime_adapter, "rollback", plan, args.root)
     receipt["status"] = "rolled_back"
     atomic_json(receipt_path(args.root), receipt)
@@ -360,11 +401,12 @@ def command_offboard(args: argparse.Namespace) -> int:
         raise BootstrapError("offboard denied: no receipt-scoped Lucy resources")
     manifest = load_json(args.manifest)
     registry_policy = registry_lucy_policy(args.registry)
-    validate_policy_projection(args.registry, args.policy, registry_policy)
+    policy = validate_policy_projection(args.registry, args.policy, registry_policy)
     validate_manifest(manifest, registry_policy)
     canonical = build_plan(manifest, args.root, args.owner_uid)
     validate_receipt(receipt, canonical, args.root)
-    plan = {"agent": "lucy", "manifest_sha256": receipt["manifest_sha256"], "resources": [{"path": p} for p in receipt["resources"]]}
+    approved_adapter(policy, args.approved_runtime_adapter)
+    plan = {"agent": "lucy", "manifest_sha256": receipt["manifest_sha256"], "resources": receipt["resources"], "binding": receipt["binding"]}
     run_adapter(args.approved_runtime_adapter, "offboard", plan, args.root)
     receipt["status"] = "offboarded"
     atomic_json(receipt_path(args.root), receipt)

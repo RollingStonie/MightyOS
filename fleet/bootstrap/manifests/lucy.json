@@ -3,6 +3,8 @@
   "agent": "lucy",
   "role": "stationary-compute-worker",
   "service_account": "lucy-compute",
+  "required_grants": ["backtesting", "contenthub-renders", "heavy-compute", "local-llm-endpoint", "nightshift-worker", "trading-research"],
+  "denied_grants": ["crm.write", "email.send", "publish", "trading.execute"],
   "lifecycle": {
     "initial": "registered",
     "promotion_path": ["registered", "provisioned", "probation", "ready"],
@@ -19,7 +21,8 @@
   "network": {
     "watcher_port": 8109,
     "bind_address": "127.0.0.1",
-    "tailscale_acl": "tag:lucy-compute"
+    "tailscale_acl": "tag:lucy-compute",
+    "tailscale_tag": "tag:lucy-compute"
   },
   "secrets": {
     "required_names": ["INFISICAL_MACHINE_IDENTITY_TOKEN"],

@@ -5,6 +5,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import importlib.util
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
@@ -12,7 +13,9 @@ CLI = REPO / "fleet/bootstrap/v2/lucy_bootstrap.py"
 MANIFEST = REPO / "fleet/bootstrap/manifests/lucy.json"
 REGISTRY = REPO / "fleet/registry.yaml"
 POLICY = REPO / "fleet/bootstrap/v2/registry-policy.json"
-WATCHER_SOURCE = Path('/Users/kenneth/AG_Mission/AG_APP/A008_Agentic OS/tools/watcher/agent_watcher.py')
+WATCHER_SOURCE = REPO / 'tests/fixtures/a008-agent_watcher.py'
+SPEC = importlib.util.spec_from_file_location('lucy_bootstrap', CLI)
+BOOTSTRAP = importlib.util.module_from_spec(SPEC); SPEC.loader.exec_module(BOOTSTRAP)
 
 
 class LucyBootstrapV2Tests(unittest.TestCase):
@@ -24,7 +27,7 @@ class LucyBootstrapV2Tests(unittest.TestCase):
             policy['approved_adapters'] = [{'id': adapter.name, 'version': 'test-v1', 'sha256': __import__('hashlib').sha256(adapter.read_bytes()).hexdigest()}]
             path = root.parent / 'approved-policy.json'; path.parent.mkdir(parents=True, exist_ok=True); path.write_text(json.dumps(policy))
             command[command.index('--policy') + 1] = str(path)
-        return subprocess.run(command, text=True, capture_output=True)
+        return subprocess.run(command, text=True, capture_output=True, env={**os.environ, 'LUCY_BOOTSTRAP_TEST_FAKE_ROOT': '1'})
 
     def fake_adapter(self, directory):
         adapter = directory / "fake-mutator.py"
@@ -153,6 +156,7 @@ else:
             plan = json.loads(self.run_cli(Path(raw), 'plan').stdout)
             wrapper = next(item['content'] for item in plan['resources'] if item['path'].endswith('lucy-watcher-loopback.py'))
         original_server, original_run_path = http.server.ThreadingHTTPServer, runpy.run_path
+        original_sys_path = sys.path.copy()
         observed = {}
         def fake_run_path(path, run_name):
             observed['path'], observed['run_name'], observed['root'] = path, run_name, sys.path[0]
@@ -165,6 +169,7 @@ else:
                 http.server.ThreadingHTTPServer(('0.0.0.0', 9999), object)
         finally:
             http.server.ThreadingHTTPServer, runpy.run_path = original_server, original_run_path
+            sys.path[:] = original_sys_path
 
     def test_watcher_binding_mismatch_is_rejected_before_plan(self):
         with tempfile.TemporaryDirectory() as raw:
@@ -248,6 +253,24 @@ else:
         self.assertEqual(reused.returncode, 2)
         self.assertIn('watcher source digest', reused.stderr)
         self.assertEqual(health.returncode, 2)
+
+    def test_watcher_source_rejects_wrong_owner_and_writable_parent(self):
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw); source = root / 'opt/mightyos/a008/tools/watcher/agent_watcher.py'
+            source.parent.mkdir(parents=True); source.write_bytes(WATCHER_SOURCE.read_bytes()); source.chmod(0o644)
+            plan = {'watcher_source': json.loads(MANIFEST.read_text())['watcher_source']}
+            real = os.stat
+            class Facts:
+                st_uid = 0; st_gid = 0; st_mode = 0o100644
+            def wrong_owner(path):
+                return type('S', (), {'st_uid': 501, 'st_gid': 0, 'st_mode': 0o100644})()
+            with self.assertRaisesRegex(BOOTSTRAP.BootstrapError, 'root:wheel'):
+                BOOTSTRAP.verify_watcher_source(plan, root, stat_fn=wrong_owner)
+            def writable_parent(path):
+                if path == source: return type('S', (), {'st_uid': 0, 'st_gid': 0, 'st_mode': 0o100644})()
+                return type('S', (), {'st_uid': 0, 'st_gid': 0, 'st_mode': 0o40775})()
+            with self.assertRaisesRegex(BOOTSTRAP.BootstrapError, 'parent path'):
+                BOOTSTRAP.verify_watcher_source(plan, root, stat_fn=writable_parent)
 
 
 if __name__ == '__main__':

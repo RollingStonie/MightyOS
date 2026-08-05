@@ -284,11 +284,28 @@ def atomic_json(path: Path, value: dict[str, Any]) -> None:
     os.replace(temporary, path)
 
 
-def verify_watcher_source(plan: dict[str, Any], root: Path) -> None:
+def verify_watcher_source(plan: dict[str, Any], root: Path, *, stat_fn=os.stat, enforce_owner: bool = True) -> None:
     source = plan["watcher_source"]
     path = root / source["path"]
-    if not path.is_file() or hashlib.sha256(path.read_bytes()).hexdigest() != source["sha256"] or format(path.stat().st_mode & 0o777, "04o") != source["mode"]:
+    if not path.is_file() or hashlib.sha256(path.read_bytes()).hexdigest() != source["sha256"] or format(stat_fn(path).st_mode & 0o777, "04o") != source["mode"]:
         raise BootstrapError("watcher source digest or non-writable mode drifted")
+    if not enforce_owner:
+        return
+    source_stat = stat_fn(path)
+    if source_stat.st_uid != 0 or source_stat.st_gid != 0:
+        raise BootstrapError("watcher source must be owned by root:wheel")
+    current = path.parent
+    root = root.resolve()
+    while current != root:
+        mode = stat_fn(current).st_mode & 0o777
+        if mode & 0o022:
+            raise BootstrapError("watcher source parent path is group/world writable")
+        current = current.parent
+
+
+def verify_runtime_watcher_source(plan: dict[str, Any], root: Path) -> None:
+    # The escape hatch is test-only: it is injected by this repository's fake-root harness.
+    verify_watcher_source(plan, root, enforce_owner=os.environ.get("LUCY_BOOTSTRAP_TEST_FAKE_ROOT") != "1")
 
 
 def write_receipt_atomically(root: Path, plan: dict[str, Any], adapter: Path) -> Path:
@@ -368,14 +385,14 @@ def command_apply(args: argparse.Namespace) -> int:
     receipt = load_receipt(args.root)
     if receipt and receipt.get("status") == "applied" and receipt.get("manifest_sha256") == plan["manifest_sha256"]:
         validate_receipt(receipt, plan, args.root)
-        verify_watcher_source(plan, args.root)
+        verify_runtime_watcher_source(plan, args.root)
         drift = [r["path"] for r in plan["resources"] if not (args.root / r["path"]).is_file() or hashlib.sha256((args.root / r["path"]).read_bytes()).hexdigest() != r["content_sha256"] or format((args.root / r["path"]).stat().st_mode & 0o777, "04o") != r["mode"]]
         if drift:
             raise BootstrapError(f"idempotency denied: receipt resources drifted: {drift}")
         print("ALREADY_APPLIED: matching receipt exists; no mutation requested")
         return 0
     run_adapter(args.approved_runtime_adapter, "preflight", plan, args.root)
-    verify_watcher_source(plan, args.root)
+    verify_runtime_watcher_source(plan, args.root)
     assert_managed(plan, receipt, args.root)
     run_adapter(args.approved_runtime_adapter, "apply", plan, args.root)
     missing = [r["path"] for r in plan["resources"] if not (args.root / r["path"]).is_file() or hashlib.sha256((args.root / r["path"]).read_bytes()).hexdigest() != r["content_sha256"] or format((args.root / r["path"]).stat().st_mode & 0o777, "04o") != r["mode"]]
@@ -396,7 +413,7 @@ def command_health(args: argparse.Namespace) -> int:
         raise BootstrapError("health denied: no applied receipt")
     plan = build_plan(manifest, args.root, args.owner_uid)
     validate_receipt(receipt, plan, args.root)
-    verify_watcher_source(plan, args.root)
+    verify_runtime_watcher_source(plan, args.root)
     if receipt.get("binding") != plan["binding"] or receipt.get("resources") != [{key: r[key] for key in ("path", "content_sha256", "mode", "owner", "launch_domain", "run_as")} for r in plan["resources"]]:
         raise BootstrapError("health denied: receipt resource facts do not match the approved plan")
     missing = [r["path"] for r in plan["resources"] if not (args.root / r["path"]).is_file() or hashlib.sha256((args.root / r["path"]).read_bytes()).hexdigest() != r["content_sha256"] or format((args.root / r["path"]).stat().st_mode & 0o777, "04o") != r["mode"]]

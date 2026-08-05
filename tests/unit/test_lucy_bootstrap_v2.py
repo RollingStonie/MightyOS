@@ -115,7 +115,7 @@ for resource in plan['resources']:
 
     def test_secret_environment_and_stale_policy_are_rejected(self):
         with tempfile.TemporaryDirectory() as raw:
-            env = {**os.environ, 'TS_KEY': 'not-a-real-key'}
+            env = {**os.environ, 'INFISICAL_MACHINE_IDENTITY_TOKEN': 'demonstration-only'}
             secret = subprocess.run(['python3', str(CLI), 'plan', '--root', raw], text=True, capture_output=True, env=env)
             stale = json.loads(POLICY.read_text()); stale['source_sha256'] = '0' * 64
             policy = Path(raw) / 'stale.json'; policy.write_text(json.dumps(stale))
@@ -124,6 +124,25 @@ for resource in plan['resources']:
         self.assertIn('credentials must not enter', secret.stderr)
         self.assertEqual(projection.returncode, 2)
         self.assertIn('policy projection is stale', projection.stderr)
+
+    def test_tampered_receipt_cannot_expand_offboard_scope(self):
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw) / 'fake-root'; adapter = self.fake_adapter(Path(raw))
+            self.assertEqual(self.run_cli(root, 'apply', '--approved-runtime-adapter', str(adapter)).returncode, 0)
+            receipt_path = root / '.mightyos/lucy-bootstrap-v2/receipt.json'
+            receipt = json.loads(receipt_path.read_text()); receipt['resources'].append('../../unrelated')
+            receipt_path.write_text(json.dumps(receipt))
+            result = self.run_cli(root, 'offboard', '--approved-runtime-adapter', str(adapter))
+        self.assertEqual(result.returncode, 2)
+        self.assertIn('receipt resources do not match', result.stderr)
+
+    def test_manifest_cannot_change_reviewed_launchd_targets(self):
+        with tempfile.TemporaryDirectory() as raw:
+            bad = json.loads(MANIFEST.read_text()); bad['launchd']['labels'][0] = '../../etc/payload'
+            path = Path(raw) / 'bad.json'; path.write_text(json.dumps(bad))
+            result = subprocess.run(['python3', str(CLI), 'validate', '--manifest', str(path)], text=True, capture_output=True)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn('launchd labels', result.stderr)
 
 
 if __name__ == '__main__':

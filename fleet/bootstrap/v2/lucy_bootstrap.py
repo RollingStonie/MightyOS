@@ -15,6 +15,7 @@ import re
 import subprocess
 import sys
 import tempfile
+from xml.sax.saxutils import escape as xml_escape
 from pathlib import Path
 from typing import Any
 
@@ -29,6 +30,8 @@ ALLOWED_MODULES = {
 FORBIDDEN_MODULES = {"messaging", "discord-bot", "slack-bot", "trading-execute", "hermes-worker"}
 FORBIDDEN_GRANTS = {"trading.execute", "publish", "email.send", "crm.write", "messaging"}
 SECRET_NAME = re.compile(r"^[A-Z][A-Z0-9_]{2,127}$")
+EXPECTED_ACCOUNT = "lucy-compute"
+EXPECTED_LABELS = ["com.mightyos.lucy.watcher", "com.mightyos.lucy.render-worker"]
 
 
 class BootstrapError(RuntimeError):
@@ -87,7 +90,7 @@ def reject_secret_channels() -> None:
     # Reject the legacy bootstrap channels.  We intentionally do not scan every inherited
     # process variable: developer shells often contain unrelated service keys, which must not
     # make a non-mutating plan unusable. Lucy secrets have no supported environment channel.
-    prohibited = {"TS_KEY", "GH_TOKEN", "BOT_TOKEN", "FLEET_WEBHOOK", "DS_KEY", "HERMES_RAW", "LUCY_BOOTSTRAP_SECRET"}
+    prohibited = {"TS_KEY", "GH_TOKEN", "BOT_TOKEN", "FLEET_WEBHOOK", "DS_KEY", "HERMES_RAW", "LUCY_BOOTSTRAP_SECRET", "INFISICAL_MACHINE_IDENTITY_TOKEN"}
     detected = [key for key in os.environ if key in prohibited]
     if detected:
         raise BootstrapError("credentials must not enter bootstrap through environment: " + ", ".join(sorted(detected)))
@@ -115,7 +118,7 @@ def validate_manifest(manifest: dict[str, Any], policy: dict[str, set[str]]) -> 
     if manifest.get("network", {}).get("watcher_port") != 8109:
         raise BootstrapError("Lucy watcher must use port 8109")
     account = manifest.get("service_account")
-    if not isinstance(account, str) or not account or account in {"root", "admin"}:
+    if account != EXPECTED_ACCOUNT:
         raise BootstrapError("a non-root dedicated service_account is required")
     names = manifest.get("secrets", {}).get("required_names")
     if not isinstance(names, list) or not names or not all(isinstance(n, str) and SECRET_NAME.fullmatch(n) for n in names):
@@ -135,16 +138,18 @@ def validate_manifest(manifest: dict[str, Any], policy: dict[str, set[str]]) -> 
     launchd = manifest.get("launchd", {})
     if launchd.get("kind") != "daemon" or launchd.get("run_at_load") is not False:
         raise BootstrapError("stationary services require reviewed LaunchDaemons and may not autostart before health proof")
+    if launchd.get("labels") != EXPECTED_LABELS:
+        raise BootstrapError("launchd labels must match the reviewed Lucy service set")
 
 
 def launchd_plist(label: str, account: str, command: list[str], run_at_load: bool) -> str:
-    args = "".join(f"<string>{part}</string>" for part in command)
+    args = "".join(f"<string>{xml_escape(part)}</string>" for part in command)
     flag = "<true/>" if run_at_load else "<false/>"
     return f'''<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
-<key>Label</key><string>{label}</string>
-<key>UserName</key><string>{account}</string>
+<key>Label</key><string>{xml_escape(label)}</string>
+<key>UserName</key><string>{xml_escape(account)}</string>
 <key>ProgramArguments</key><array>{args}</array>
 <key>RunAtLoad</key>{flag}
 <key>StandardOutPath</key><string>/var/log/mightyos/{label}.log</string>
@@ -205,6 +210,21 @@ def assert_managed(plan: dict[str, Any], receipt: dict[str, Any] | None, root: P
             raise BootstrapError(f"unmanaged resource exists: {target}")
 
 
+def validate_receipt(receipt: dict[str, Any], plan: dict[str, Any], root: Path) -> None:
+    expected_paths = [resource["path"] for resource in plan["resources"]]
+    paths = receipt.get("resources")
+    if receipt.get("schema_version") != 2 or receipt.get("agent") != "lucy":
+        raise BootstrapError("receipt does not belong to Lucy bootstrap v2")
+    if receipt.get("root") != str(root.resolve()) or receipt.get("manifest_sha256") != plan["manifest_sha256"]:
+        raise BootstrapError("receipt is not bound to this root and manifest")
+    if not isinstance(paths, list) or paths != expected_paths:
+        raise BootstrapError("receipt resources do not match the reviewed manifest plan")
+    for path in paths:
+        candidate = Path(path)
+        if candidate.is_absolute() or ".." in candidate.parts:
+            raise BootstrapError("receipt contains an unsafe resource path")
+
+
 def atomic_json(path: Path, value: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.NamedTemporaryFile("w", dir=path.parent, prefix=".pending-", delete=False) as handle:
@@ -235,7 +255,10 @@ def run_adapter(adapter: Path, operation: str, plan: dict[str, Any], root: Path)
         json.dump(plan, handle)
         plan_file = Path(handle.name)
     try:
-        completed = subprocess.run([str(adapter), operation, str(plan_file), str(root)], text=True, capture_output=True)
+        completed = subprocess.run(
+            [str(adapter), operation, str(plan_file), str(root)], text=True, capture_output=True,
+            env={"PATH": os.environ.get("PATH", "/usr/bin:/bin"), "LC_ALL": "C"},
+        )
     finally:
         plan_file.unlink(missing_ok=True)
     if completed.returncode:
@@ -285,11 +308,15 @@ def command_apply(args: argparse.Namespace) -> int:
 
 def command_health(args: argparse.Namespace) -> int:
     reject_secret_channels()
+    manifest = load_json(args.manifest)
+    registry_policy = registry_lucy_policy(args.registry)
+    validate_policy_projection(args.registry, args.policy, registry_policy)
+    validate_manifest(manifest, registry_policy)
     receipt = load_receipt(args.root)
     if not receipt or receipt.get("status") != "applied":
         raise BootstrapError("health denied: no applied receipt")
-    if receipt.get("manifest_sha256") != manifest_hash(load_json(args.manifest)):
-        raise BootstrapError("health denied: receipt is not bound to current manifest")
+    plan = build_plan(manifest, args.root, args.owner_uid)
+    validate_receipt(receipt, plan, args.root)
     missing = [path for path in receipt["resources"] if not (args.root / path).is_file()]
     if missing:
         raise BootstrapError(f"health failed: missing managed resources {missing}")
@@ -310,6 +337,12 @@ def command_rollback(args: argparse.Namespace) -> int:
     receipt = load_receipt(args.root)
     if not receipt or receipt.get("status") != "applied":
         raise BootstrapError("rollback denied: no applied receipt")
+    manifest = load_json(args.manifest)
+    registry_policy = registry_lucy_policy(args.registry)
+    validate_policy_projection(args.registry, args.policy, registry_policy)
+    validate_manifest(manifest, registry_policy)
+    canonical = build_plan(manifest, args.root, args.owner_uid)
+    validate_receipt(receipt, canonical, args.root)
     plan = {"agent": "lucy", "manifest_sha256": receipt["manifest_sha256"], "resources": [{"path": p} for p in receipt["resources"]]}
     run_adapter(args.approved_runtime_adapter, "rollback", plan, args.root)
     receipt["status"] = "rolled_back"
@@ -325,6 +358,12 @@ def command_offboard(args: argparse.Namespace) -> int:
     receipt = load_receipt(args.root)
     if not receipt or receipt.get("status") not in {"applied", "rolled_back"}:
         raise BootstrapError("offboard denied: no receipt-scoped Lucy resources")
+    manifest = load_json(args.manifest)
+    registry_policy = registry_lucy_policy(args.registry)
+    validate_policy_projection(args.registry, args.policy, registry_policy)
+    validate_manifest(manifest, registry_policy)
+    canonical = build_plan(manifest, args.root, args.owner_uid)
+    validate_receipt(receipt, canonical, args.root)
     plan = {"agent": "lucy", "manifest_sha256": receipt["manifest_sha256"], "resources": [{"path": p} for p in receipt["resources"]]}
     run_adapter(args.approved_runtime_adapter, "offboard", plan, args.root)
     receipt["status"] = "offboarded"

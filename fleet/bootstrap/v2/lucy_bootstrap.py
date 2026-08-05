@@ -170,16 +170,40 @@ def launchd_plist(label: str, account: str, command: list[str], run_at_load: boo
 </dict></plist>\n'''
 
 
+def watcher_loopback_wrapper(bind_address: str, port: int) -> str:
+    """Immutable wrapper for the current A008 watcher, which otherwise hard-codes 0.0.0.0."""
+    return f'''#!/usr/bin/env python3
+import http.server
+import os
+import runpy
+
+_expected = ({bind_address!r}, {port})
+_base = http.server.ThreadingHTTPServer
+class _LoopbackOnlyServer(_base):
+    def __init__(self, requested, handler, *args, **kwargs):
+        if requested != ("0.0.0.0", {port}):
+            raise RuntimeError("unexpected A008 watcher bind request")
+        super().__init__(_expected, handler, *args, **kwargs)
+http.server.ThreadingHTTPServer = _LoopbackOnlyServer
+os.environ["A008_WATCHER_PORT"] = str({port})
+runpy.run_path("/opt/mightyos/a008/tools/watcher/agent_watcher.py", run_name="__main__")
+'''
+
+
 def build_plan(manifest: dict[str, Any], root: Path, owner_uid: str | None) -> dict[str, Any]:
     account = manifest["service_account"]
     if owner_uid is not None:
         raise BootstrapError("owner UID is not accepted: Lucy uses a system LaunchDaemon with explicit UserName")
     labels = manifest["launchd"]["labels"]
+    wrapper = watcher_loopback_wrapper(manifest["network"]["bind_address"], manifest["network"]["watcher_port"])
     services = [
-        (labels[0], ["/usr/bin/env", "python3", "-m", "agentic_os.watcher", "--port", "8109"]),
+        (labels[0], ["/usr/bin/env", "python3", "/opt/mightyos/libexec/lucy-watcher-loopback.py"]),
         (labels[1], ["/usr/bin/env", "python3", "-m", "contenthub.render_worker"]),
     ]
-    resources = []
+    resources = [{
+        "path": "opt/mightyos/libexec/lucy-watcher-loopback.py", "mode": "0755", "owner": "root:wheel", "run_as": account,
+        "launch_domain": "system", "content": wrapper,
+    }]
     for label, command in services:
         resources.append({
             "path": f"Library/LaunchDaemons/{label}.plist",

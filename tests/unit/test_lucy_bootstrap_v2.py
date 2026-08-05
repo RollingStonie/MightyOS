@@ -34,7 +34,7 @@ root = pathlib.Path(root)
 for resource in plan['resources']:
     path = root / resource['path']
     if operation == 'apply':
-        path.parent.mkdir(parents=True, exist_ok=True); path.write_text(resource.get('content', 'managed')); path.chmod(0o644)
+        path.parent.mkdir(parents=True, exist_ok=True); path.write_text(resource.get('content', 'managed')); path.chmod(int(resource['mode'], 8))
     elif operation in {'rollback', 'offboard'}:
         path.unlink(missing_ok=True)
 if operation == 'apply':
@@ -126,6 +126,25 @@ else:
         self.assertIn('<key>RunAtLoad</key><false/>', result.stdout)
         self.assertIn('"launch_domain": "system"', result.stdout)
         self.assertIn('"owner": "root:wheel"', result.stdout)
+
+    def test_watcher_wrapper_enforces_exact_loopback_binding(self):
+        with tempfile.TemporaryDirectory() as raw:
+            result = self.run_cli(Path(raw), 'plan')
+            plan = json.loads(result.stdout)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        wrapper = next(item['content'] for item in plan['resources'] if item['path'].endswith('lucy-watcher-loopback.py'))
+        watcher = next(item['content'] for item in plan['resources'] if item['path'].endswith('watcher.plist'))
+        self.assertIn("_expected = ('127.0.0.1', 8109)", wrapper)
+        self.assertIn('super().__init__(_expected', wrapper)
+        self.assertIn('/opt/mightyos/libexec/lucy-watcher-loopback.py', watcher)
+
+    def test_watcher_binding_mismatch_is_rejected_before_plan(self):
+        with tempfile.TemporaryDirectory() as raw:
+            bad = json.loads(MANIFEST.read_text()); bad['network']['bind_address'] = '0.0.0.0'
+            path = Path(raw) / 'public.json'; path.write_text(json.dumps(bad))
+            result = subprocess.run(['python3', str(CLI), 'plan', '--manifest', str(path)], text=True, capture_output=True)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn('bind localhost', result.stderr)
 
     def test_secret_environment_and_stale_policy_are_rejected(self):
         with tempfile.TemporaryDirectory() as raw:

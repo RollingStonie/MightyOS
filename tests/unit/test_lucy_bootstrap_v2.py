@@ -2,6 +2,7 @@ import json
 import os
 import stat
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -135,8 +136,30 @@ else:
         wrapper = next(item['content'] for item in plan['resources'] if item['path'].endswith('lucy-watcher-loopback.py'))
         watcher = next(item['content'] for item in plan['resources'] if item['path'].endswith('watcher.plist'))
         self.assertIn("_expected = ('127.0.0.1', 8109)", wrapper)
+        self.assertIn('_a008_root = "/opt/mightyos/a008"', wrapper)
+        self.assertIn('sys.path.insert(0, _a008_root)', wrapper)
         self.assertIn('super().__init__(_expected', wrapper)
         self.assertIn('/opt/mightyos/libexec/lucy-watcher-loopback.py', watcher)
+
+    def test_watcher_wrapper_executes_import_setup_without_opening_listener(self):
+        import http.server
+        import runpy
+        with tempfile.TemporaryDirectory() as raw:
+            plan = json.loads(self.run_cli(Path(raw), 'plan').stdout)
+            wrapper = next(item['content'] for item in plan['resources'] if item['path'].endswith('lucy-watcher-loopback.py'))
+        original_server, original_run_path = http.server.ThreadingHTTPServer, runpy.run_path
+        observed = {}
+        def fake_run_path(path, run_name):
+            observed['path'], observed['run_name'], observed['root'] = path, run_name, sys.path[0]
+            return {}
+        try:
+            runpy.run_path = fake_run_path
+            exec(compile(wrapper, '<lucy-wrapper>', 'exec'), {})
+            self.assertEqual(observed, {'path': '/opt/mightyos/a008/tools/watcher/agent_watcher.py', 'run_name': '__main__', 'root': '/opt/mightyos/a008'})
+            with self.assertRaises(RuntimeError):
+                http.server.ThreadingHTTPServer(('0.0.0.0', 9999), object)
+        finally:
+            http.server.ThreadingHTTPServer, runpy.run_path = original_server, original_run_path
 
     def test_watcher_binding_mismatch_is_rejected_before_plan(self):
         with tempfile.TemporaryDirectory() as raw:

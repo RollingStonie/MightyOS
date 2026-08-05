@@ -176,8 +176,12 @@ def watcher_loopback_wrapper(bind_address: str, port: int) -> str:
 import http.server
 import os
 import runpy
+import sys
 
 _expected = ({bind_address!r}, {port})
+_a008_root = "/opt/mightyos/a008"
+if _a008_root not in sys.path:
+    sys.path.insert(0, _a008_root)
 _base = http.server.ThreadingHTTPServer
 class _LoopbackOnlyServer(_base):
     def __init__(self, requested, handler, *args, **kwargs):

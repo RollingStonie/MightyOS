@@ -1,10 +1,10 @@
 {
   "agent": "claire",
-  "last_seen": "2026-07-23T13:52:00Z",
+  "last_seen": "2026-08-06T11:44:11Z",
   "status": "online",
-  "current_task": "FLEET reconciliation: verify Claire, Mike, and Mighty truth",
-  "model_in_use": "codex",
+  "current_task": "auto-detected: node /Users/kenneth/.hermes/lsp/bin/typescript-language-server --stdio",
+  "model_in_use": "unknown",
   "results_today": 0,
   "errors_today": 0,
-  "session_started": "2026-07-23T13:43:31Z"
+  "session_started": "unknown"
 }

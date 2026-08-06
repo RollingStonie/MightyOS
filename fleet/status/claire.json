@@ -1,6 +1,6 @@
 {
   "agent": "claire",
-  "last_seen": "2026-08-06T23:07:18Z",
+  "last_seen": "2026-08-06T23:37:29Z",
   "status": "online",
   "current_task": "auto-detected: /Users/kenneth/.hermes/hermes-agent/venv/bin/python /Users/kenneth/.hermes/hermes-agent/tools/mcp_stdio_watchdog.py --pp",
   "model_in_use": "unknown",

@@ -91,17 +91,19 @@ mighty:
 
 brian:
   device: Dell Vostro 15 3510 (i7-1165G7, 16GB RAM, Intel Iris Xe)
-  tailscale_ip: TBD
+  tailscale_ip: 100.127.107.122         # verified 2026-08-07; desktop-qq0ko3m
   tailscale: brian.tailnet
-  state: registered                    # provisioned gate = "Tailscale + tags live" (M016 spec lifecycle); NOT passed yet — see blocked_by. Advances to provisioned once Tailscale is up.
+  state: registered                    # lifecycle remains registered; provisioning never completed
   discord_identity: brian-bot
   infisical_identity: brian-runtime    # planned — INFRA-01
-  status: provisioning
+  status: dormant                      # legitimate device; Kenneth cannot currently locate it
   capabilities: [contenthub-scanner, light-cron, outreach-sending]
   grants: [contenthub-scanner, light-cron, outreach-sending, email.send]   # sender role — email.send is a grant here, not forbidden
   forbidden: [publish, crm.write]
   role: always-on-cpu-network-box
-  blocked_by: Tailscale setup
+  blocked_by: dormant — physical verification before resuming provisioning
+  # Tailscale node nftQGDhYCD21CNTRL joined 2026-06-08 22:58 BST; last seen 2026-06-10.
+  # Keep this record; do not prune until Kenneth physically confirms the machine's status.
 
 lucy:
   device: MacBook M5 128GB (planned stationary home anchor)

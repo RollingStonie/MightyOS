@@ -1,8 +1,8 @@
 {
   "agent": "claire",
-  "last_seen": "2026-08-07T04:09:16Z",
+  "last_seen": "2026-08-07T04:39:28Z",
   "status": "online",
-  "current_task": "auto-detected: /Users/kenneth/.hermes/hermes-agent/venv/bin/python /Users/kenneth/.hermes/hermes-agent/tools/mcp_stdio_watchdog.py --pp",
+  "current_task": "auto-detected: /Users/kenneth/.hermes/hermes-agent/venv/bin/python -m hermes_cli.main gateway run --replace",
   "model_in_use": "unknown",
   "results_today": 0,
   "errors_today": 0,

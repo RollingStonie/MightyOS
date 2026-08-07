@@ -1,6 +1,6 @@
 {
   "agent": "mighty",
-  "last_seen": "2026-08-07T09:10:48Z",
+  "last_seen": "2026-08-07T09:40:56Z",
   "status": "online",
   "current_task": "auto-detected: python3 /tmp/send_influencer_outreach.py",
   "model_in_use": "unknown",

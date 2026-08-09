@@ -1,6 +1,6 @@
 {
   "agent": "claire",
-  "last_seen": "2026-08-09T07:55:12Z",
+  "last_seen": "2026-08-09T08:25:32Z",
   "status": "online",
   "current_task": "auto-detected: /Users/kenneth/.hermes/hermes-agent/venv/bin/python3 /Users/kenneth/.local/bin/hermes serve --host 127.0.0.1 --port 0",
   "model_in_use": "unknown",

@@ -186,19 +186,25 @@ george:
   discord_app_id: null
   discord_identity_verified_at: null
   infisical_identity: george-runtime   # planned — INFRA-01 (machine identity not yet provisioned)
-  primary_model: null                  # TODO: verify on VPS — what model is the live `hermes -p george gateway run --replace` actually using?
-  comms: slack-only                    # intended Slack librarian surface — channel TBD post-verification
+  primary_model: MiniMax-M3            # verified 2026-08-10 — model.default=minimax in config.yaml; `auth.json` MINIMAX_API_KEY ok
+  model_verified_at: 2026-08-10        # date the live model + provider were read off VPS
+  comms: slack-only                    # Slack workspace Omirank - JomoTeam (TSA9SSLCV), channel #agent-george (C0BEAK91VKL), bot @george, app A0BPD2R9USC
   capabilities: [brand-knowledge, employee-queries, slack-librarian]
   grants: [employee-query]             # read-only knowledge queries against brand/company corpus
   forbidden: [publish, email.send, crm.write, lead-scrape, sysadmin, docker-admin, write]
   hermes_profile: george
-  profile_path_observed: /opt/hermes-agent            # per kenneth-fleet skill, owned by user `george-+`
-  hermes_home_status: read-only-verification-required  # same discipline as ashley/mighty — confirm systemd env + process cmdline first
+  hermes_home: /var/lib/hermes-george   # verified 2026-08-10 — dedicated home, separate from ashley/finn root home
+  profile_path_observed: /var/lib/hermes-george/profiles/george  # verified 2026-08-10 — owned by service user george-svc (UID 995)
+  hermes_service_user: george-svc       # verified 2026-08-10 — nologin shell, hardened via systemd ProtectSystem=strict + NoNewPrivileges + ReadWritePaths
+  hermes_home_status: read-only-verified  # verified 2026-08-10 — systemd unit george-gateway.service, argv=['/opt/hermes-agent/bin/hermes','-p','george','gateway','run','--replace']
+  slack_workspace: Omirank - JomoTeam  # verified 2026-08-10 — team TSA9SSLCV, bot @george
+  slack_app_id: A0BPD2R9USC             # verified 2026-08-10
+  slack_channel: agent-george          # verified 2026-08-10 — channel C0BEAK91VKL (private)
   produces: brand/company knowledge answers for employee Slack queries
-  expected_daily_output: TBD — pending verification + Slack channel setup
+  expected_daily_output: TBD — pending verification + KB seeding
   # DISCOVERED 2026-08-09: live `hermes -p george gateway run --replace` process running (up since Aug 8) with no prior registry/skill entry anywhere. Kenneth confirmed intent (brand-knowledge Slack librarian).
-  # TODO (FLEET onboarding checklist):
-  #   1. SSH to VPS read-only audit: verify profile path, model, Slack connection, heartbeat loop, SOUL/AGENTS.md existence
-  #   2. Decide heartbeat cadence and Slack channel for librarian queries
-  #   3. Provision Infisical `george-runtime` machine identity
-  #   4. Promote state registered → probation once verified, then ready once Slack channel is live
+  # VERIFIED 2026-08-10 (goal: fleet-skills-onboarding): model, paths, service user, Slack workspace + channel + app all confirmed on VPS.
+  # REMAINING (NOT in this goal):
+  #   1. Provision Infisical `george-runtime` machine identity (INFRA-01, separate ticket)
+  #   2. Promote state registered → probation once KB seeded + ≥1 real employee query answered correctly (deferred — needs user traffic)
+  #   3. Slack `mpim:history` scope missing — benign for single-channel scope, defer until group-DM flows needed

@@ -2,7 +2,7 @@
 # GENERATED FILE — do not hand-edit.
 # Compiled by tools/fleet_registry/publish.py from A008 registry/fleet-agents.yaml
 # source_commit: 62a064c872d4c17b9984283e18d732f39a0fc9cc
-# published_at: 2026-08-10T07:10:45.759425+00:00
+# published_at: 2026-08-10T18:11:57.970627+00:00
 # Edit the source in A008, not this file — hand edits here are drift and will be
 # silently overwritten by the next publish run.
 # ============================================================
@@ -176,3 +176,29 @@ ashley:
   # (systemd unit ashley-gateway.service, User=root). forbidden:[sysadmin, docker-admin]
   # is registry-level intent only — NOT OS-enforced while running as root. Pending
   # migration to a dedicated unprivileged user (see M016 hardening receipt / migration plan).
+
+george:
+  device: vps-profile                  # Hermes profile on mighty's Hostinger KVM2 VPS (2vCPU / 8GB RAM) — not a separate box
+  tailscale_ip: 100.66.96.51           # shares mighty's VPS host
+  tailscale: mighty.tailnet            # co-resident on mighty's VPS
+  state: registered                    # discovered undocumented 2026-08-09 (process up since 2026-08-08); verification pending — promote to probation once model/Slack/heartbeat verified
+  discord_identity: null               # brand-knowledge Slack librarian — no Discord identity per registry convention
+  discord_app_id: null
+  discord_identity_verified_at: null
+  infisical_identity: george-runtime   # planned — INFRA-01 (machine identity not yet provisioned)
+  primary_model: null                  # TODO: verify on VPS — what model is the live `hermes -p george gateway run --replace` actually using?
+  comms: slack-only                    # intended Slack librarian surface — channel TBD post-verification
+  capabilities: [brand-knowledge, employee-queries, slack-librarian]
+  grants: [employee-query]             # read-only knowledge queries against brand/company corpus
+  forbidden: [publish, email.send, crm.write, lead-scrape, sysadmin, docker-admin, write]
+  hermes_profile: george
+  profile_path_observed: /opt/hermes-agent            # per kenneth-fleet skill, owned by user `george-+`
+  hermes_home_status: read-only-verification-required  # same discipline as ashley/mighty — confirm systemd env + process cmdline first
+  produces: brand/company knowledge answers for employee Slack queries
+  expected_daily_output: TBD — pending verification + Slack channel setup
+  # DISCOVERED 2026-08-09: live `hermes -p george gateway run --replace` process running (up since Aug 8) with no prior registry/skill entry anywhere. Kenneth confirmed intent (brand-knowledge Slack librarian).
+  # TODO (FLEET onboarding checklist):
+  #   1. SSH to VPS read-only audit: verify profile path, model, Slack connection, heartbeat loop, SOUL/AGENTS.md existence
+  #   2. Decide heartbeat cadence and Slack channel for librarian queries
+  #   3. Provision Infisical `george-runtime` machine identity
+  #   4. Promote state registered → probation once verified, then ready once Slack channel is live

@@ -19,3 +19,7 @@ claire:
 ashley:
   emails_per_day: 0
   offline_alert_minutes: 30
+
+george:
+  queries_per_day: 0          # TBD — pending verification + Slack channel setup (brand-knowledge Slack librarian)
+  offline_alert_minutes: 30

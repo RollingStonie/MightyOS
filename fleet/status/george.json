@@ -1,0 +1,10 @@
+{
+  "agent": "george",
+  "last_seen": "2026-08-09T00:00:00Z",
+  "status": "unknown",
+  "current_task": "unknown — verification pending (process discovered running undocumented 2026-08-09, formal onboarding 2026-08-10)",
+  "model_in_use": "unknown",
+  "results_today": 0,
+  "errors_today": 0,
+  "session_started": "unknown"
+}

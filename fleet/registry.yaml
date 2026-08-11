@@ -2,7 +2,7 @@
 # GENERATED FILE — do not hand-edit.
 # Compiled by tools/fleet_registry/publish.py from A008 registry/fleet-agents.yaml
 # source_commit: be5961d6db0c2a823fa48fc312c6cce89bb3ea81
-# published_at: 2026-08-10T18:16:59.658129+00:00
+# published_at: 2026-08-11T14:14:24.005260+00:00
 # Edit the source in A008, not this file — hand edits here are drift and will be
 # silently overwritten by the next publish run.
 # ============================================================
@@ -33,11 +33,15 @@
 #                 TOKEN never appears in this file; it stays in
 #                 ~/.hermes/secrets/discord_agents.json or Infisical.
 #
-# PLATFORM BOUNDARY (decided 2026-08-05): QM is the preferred employee-facing
-# platform for a gated pilot; it is NOT a fleet agent and therefore has no row
-# in this registry. A008 remains the governance/delivery kernel, Plane remains
-# the sole company work ledger, and Hermes remains the edge runtime for the
-# device/profile identities below. Buzz is reference-only during the QM pilot.
+# PLATFORM BOUNDARY (2026-08-05; workflow-authority clarification accepted
+# 2026-08-11): QM is the preferred employee-facing platform for a gated pilot;
+# it is NOT a fleet agent and therefore has no row in this registry. A008 remains
+# the governance/delivery kernel and canonical machine authority for orchestrated
+# workflow/action lifecycle, leases, approvals, budgets, and audit. Plane remains
+# the human-visible company work ledger/projection and manual-intent surface; it
+# does not mutate canonical A008 state directly. Hermes remains the edge runtime
+# for the device/profile identities below. Buzz is reference-only during the QM
+# pilot. See ai/decisions/2026-08-11-a008-workflow-authority-plane-projection-adr.md.
 
 claire:
   device: MacBook M1 Max 32GB

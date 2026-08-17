@@ -1,8 +1,8 @@
 # ============================================================
 # GENERATED FILE — do not hand-edit.
 # Compiled by tools/fleet_registry/publish.py from A008 registry/fleet-agents.yaml
-# source_commit: 8292e2bbd634f71dfe3a39681ed413133202cc24
-# published_at: 2026-08-13T08:17:33.627285+00:00
+# source_commit: 715708ad566bb4783642eeb088c34b199c2b685b
+# published_at: 2026-08-17T22:11:55.051843+00:00
 # Edit the source in A008, not this file — hand edits here are drift and will be
 # silently overwritten by the next publish run.
 # ============================================================
@@ -138,11 +138,11 @@ lucy:
   discord_app_id: null   # TODO: backfill from the live bot (drift_check.py --live) or Kenneth
   discord_identity_verified_at: null   # never verified by this mechanism yet
   infisical_identity: lucy-runtime     # planned — INFRA-01
-  capabilities: [local-llm-endpoint, contenthub-renders, heavy-compute, trading-research, backtesting, nightshift-worker]
-  grants: [local-llm-endpoint, contenthub-renders, heavy-compute, trading-research, backtesting, nightshift-worker]
-  forbidden: [publish, email.send, crm.write, trading.execute]   # research/compute only until a separately approved trading-execution design exists
+  capabilities: [contenthub-creator, contenthub-scanner, contenthub-render-worker, qmd-runtime, hermes-profile, a008-dev-instance, hannah-ssh-access, heavy-compute]
+  grants: [contenthub-creator, contenthub-scanner, contenthub-render-worker, qmd-runtime, hermes-profile, a008-dev-instance, hannah-ssh-access, heavy-compute]
+  forbidden: [publish, email.send, crm.write, trading.execute, ollama-daemon, portable-sleep-mode, caffeinate-wrapper]
   status: planned
-  role: stationary always-on compute anchor; ContentHub rendering; trading research/backtesting; background agent work
+  role: hannah-contenthub-pc; stationary always-on 24/7 compute anchor; ContentHub creator/scanner/render worker; QMD runtime under hannah + kenneth; Hermes profile "lucy"; A008 dev instance; Hannah SSH access; supply contenthub-prod grants
 
 luna:
   device: MacBook M5 128GB (planned portable machine)
@@ -153,11 +153,12 @@ luna:
   discord_app_id: null   # TODO: backfill from the live bot (drift_check.py --live) or Kenneth
   discord_identity_verified_at: null   # never verified by this mechanism yet
   infisical_identity: luna-runtime      # planned — provision only during approved onboarding
-  capabilities: [portable-dev, local-llm-endpoint, coding-worker, client-demos]
-  grants: [dev, portable-dev, local-llm-endpoint, coding-worker]
-  forbidden: [publish, email.send, crm.write, trading.execute]
+  hermes_profile: luna                # portable-machine Hermes edge profile (matches Ashley/George convention)
+  capabilities: [hermes-profile, portable-dev, coding-worker, git-clone-mirror, a008-dev-instance, trading-research]
+  grants: [hermes-profile, portable-dev, coding-worker, git-clone-mirror, a008-dev-instance, trading-research]
+  forbidden: [publish, email.send, crm.write, trading.execute, ollama-daemon, contenthub-render, always-on-power]
   status: planned
-  role: Kenneth portable development/reasoning machine; on-demand coding worker
+  role: hermes-portable-dev; portable dormant-when-offline machine; caffeinate -d -i -u while powered; Hermes profile "luna"; on-demand coding worker + trading research; A008 dev instance; supply luna-personal grants + fleet-core read-only
   expected_daily_output: on demand
 
 ashley:

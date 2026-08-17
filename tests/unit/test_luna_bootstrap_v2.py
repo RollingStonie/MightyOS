@@ -339,7 +339,7 @@ else:
             with self.assertRaisesRegex(BOOTSTRAP.BootstrapError, 'parent path'):
                 BOOTSTRAP.verify_watcher_source(plan, root, stat_fn=writable_parent)
 
-    def test_hermes_is_now_enabled_and_policy_projects_luna_bot_identity(self):
+    def test_hermes_is_now_enabled_and_policy_projects_null_discord_identity(self):
         manifest = json.loads(MANIFEST.read_text())
         self.assertTrue(manifest['hermes']['enabled'])
         self.assertEqual(manifest['hermes']['profile_name'], 'luna')
@@ -347,7 +347,9 @@ else:
         self.assertEqual(manifest['hermes']['channel'], '#agent-luna')
         self.assertIn('hermes-profile', manifest['modules'])
         policy = json.loads(POLICY.read_text())
-        self.assertEqual(policy['agents']['luna']['discord_identity'], 'luna-bot')
+        # Canonical A008 registry sets Luna discord_identity=null (portable
+        # machine does not earn a bot identity by default).
+        self.assertIsNone(policy['agents']['luna']['discord_identity'])
         with tempfile.TemporaryDirectory() as raw:
             result = self.run_cli(Path(raw), 'plan')
         self.assertEqual(result.returncode, 0, result.stderr)
@@ -364,9 +366,10 @@ else:
         self.assertNotIn('com.mightyos.luna.ollama', manifest['launchd']['labels'])
         self.assertEqual(manifest['launchd']['labels'], BOOTSTRAP.EXPECTED_LABELS)
         self.assertTrue(manifest['launchd']['run_at_load'])
-        for dropped_grant in ('content-creator', 'contenthub-creator', 'contenthub-render', 'contenthub-scanner', 'local-llm-endpoint'):
+        for dropped_grant in ('content-creator', 'contenthub-creator', 'contenthub-render-worker', 'contenthub-scanner', 'local-llm-endpoint', 'hermes-personal', 'repos-mirror'):
             self.assertNotIn(dropped_grant, manifest['required_grants'])
-        for kept_grant in ('dev', 'repos-mirror', 'hermes-personal', 'trading-research', 'nightshift-worker', 'heavy-compute', 'portable-dev'):
+        # Grants tracked against canonical A008 registry/fleet-agents.yaml Luna block.
+        for kept_grant in ('hermes-profile', 'portable-dev', 'coding-worker', 'git-clone-mirror', 'a008-dev-instance', 'trading-research'):
             self.assertIn(kept_grant, manifest['required_grants'])
 
 

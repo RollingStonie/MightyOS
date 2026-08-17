@@ -272,7 +272,7 @@ else:
             with self.assertRaisesRegex(BOOTSTRAP.BootstrapError, 'parent path'):
                 BOOTSTRAP.verify_watcher_source(plan, root, stat_fn=writable_parent)
 
-    def test_hermes_is_now_enabled_and_policy_projects_lucy_bot_identity(self):
+    def test_hermes_is_now_enabled_and_policy_projects_null_discord_identity(self):
         manifest = json.loads(MANIFEST.read_text())
         self.assertTrue(manifest['hermes']['enabled'])
         self.assertEqual(manifest['hermes']['profile_name'], 'lucy')
@@ -280,7 +280,10 @@ else:
         self.assertTrue(manifest['hermes']['channel'].startswith('#'))
         self.assertIn('hermes-profile', manifest['modules'])
         policy = json.loads(POLICY.read_text())
-        self.assertEqual(policy['agents']['lucy']['discord_identity'], 'lucy-bot')
+        # Canonical A008 registry sets Lucy discord_identity=null (compute host
+        # does not earn a bot identity by default). The policy projection must mirror
+        # that, not the old "lucy-bot" string.
+        self.assertIsNone(policy['agents']['lucy']['discord_identity'])
         with tempfile.TemporaryDirectory() as raw:
             result = self.run_cli(Path(raw), 'plan')
         self.assertEqual(result.returncode, 0, result.stderr)
@@ -300,11 +303,14 @@ else:
     def test_lucy_required_grants_match_new_role_contract(self):
         manifest = json.loads(MANIFEST.read_text())
         policy = json.loads(POLICY.read_text())
-        expected = {"dev", "repos-mirror", "hermes-dev", "heavy-compute", "nightshift-worker", "content-creator", "contenthub-scanner", "contenthub-render", "backtesting", "trading-research"}
+        # Canonical A008 grants for Lucy (registry/fleet-agents.yaml). The bootstrap
+        # planner hardcodes the same set in EXPECTED_GRANTS so a future registry edit
+        # without a planner update must be caught by parity validation.
+        expected = {"contenthub-creator", "contenthub-scanner", "contenthub-render-worker", "qmd-runtime", "hermes-profile", "a008-dev-instance", "hannah-ssh-access", "heavy-compute"}
         self.assertEqual(set(manifest['required_grants']), expected)
         self.assertEqual(set(BOOTSTRAP.EXPECTED_GRANTS), expected)
         self.assertEqual(set(policy['agents']['lucy']['grants']), expected)
-        self.assertEqual(set(manifest['denied_grants']), {"crm.write", "email.send", "publish", "trading.execute"})
+        self.assertEqual(set(manifest['denied_grants']), {"publish", "email.send", "crm.write", "trading.execute", "ollama-daemon", "portable-sleep-mode", "caffeinate-wrapper"})
 
     def test_lucy_hannah_contenthub_and_qmd_modules_present(self):
         manifest = json.loads(MANIFEST.read_text())

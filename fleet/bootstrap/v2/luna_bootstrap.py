@@ -40,8 +40,8 @@ FORBIDDEN_GRANTS = {"trading.execute", "publish", "email.send", "crm.write"}
 SECRET_NAME = re.compile(r"^[A-Z][A-Z0-9_]{2,127}$")
 EXPECTED_ACCOUNT = "luna-compute"
 EXPECTED_LABELS = ["com.mightyos.luna.watcher", "com.mightyos.luna.hermes-bot"]
-EXPECTED_GRANTS = {"dev", "heavy-compute", "hermes-personal", "nightshift-worker", "portable-dev", "repos-mirror", "trading-research"}
-EXPECTED_DENIALS = {"crm.write", "email.send", "publish", "trading.execute"}
+EXPECTED_GRANTS = {"hermes-profile", "portable-dev", "coding-worker", "git-clone-mirror", "a008-dev-instance", "trading-research"}
+EXPECTED_DENIALS = {"publish", "email.send", "crm.write", "trading.execute", "ollama-daemon", "contenthub-render", "always-on-power"}
 EXPECTED_SECRET_NAMES = ["INFISICAL_MACHINE_IDENTITY_TOKEN", "DISCORD_BOT_TOKEN_LUNA"]
 EXPECTED_SECRET_SCOPES = ["/luna/runtime", "Fleet Core/prod/luna"]
 EXPECTED_TAILSCALE_TAG = "tag:luna-portable"
@@ -111,8 +111,8 @@ def validate_policy_projection(registry: Path, policy_path: Path, registry_polic
         raise BootstrapError("registry policy projection is stale; regenerate and review it before use")
     block = _extract_agent_block(policy, agent)
     if agent == "luna":
-        if block.get("discord_identity") != "luna-bot":
-            raise BootstrapError("Luna policy projection must keep the luna-bot Hermes-managed Discord identity")
+        if block.get("discord_identity") is not None:
+            raise BootstrapError("Luna policy projection must keep discord_identity null (canonical: portable machine does not earn a bot identity by default)")
     else:
         raise BootstrapError(f"unknown agent in policy projection: {agent}")
     for key in ("grants", "forbidden"):

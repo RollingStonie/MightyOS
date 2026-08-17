@@ -4,8 +4,8 @@
   "role": "hermes-portable-dev",
   "service_account": "luna-compute",
   "watcher_source": {"path": "opt/mightyos/a008/tools/watcher/agent_watcher.py", "sha256": "eb9c2b7a18eec0f066eddb2c0e3104243dd80af084b20c5e8e98748b573f5339", "mode": "0644", "owner": "root:wheel"},
-  "required_grants": ["dev", "heavy-compute", "hermes-personal", "nightshift-worker", "portable-dev", "repos-mirror", "trading-research"],
-  "denied_grants": ["crm.write", "email.send", "publish", "trading.execute"],
+  "required_grants": ["hermes-profile", "portable-dev", "coding-worker", "git-clone-mirror", "a008-dev-instance", "trading-research"],
+  "denied_grants": ["publish", "email.send", "crm.write", "trading.execute", "ollama-daemon", "contenthub-render", "always-on-power"],
   "lifecycle": {
     "initial": "registered",
     "promotion_path": ["registered", "provisioned", "probation", "ready"],

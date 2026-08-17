@@ -44,11 +44,11 @@ EXPECTED_LABELS = [
 PLANNER_OWNED_LABELS = {"com.mightyos.lucy.watcher", "com.mightyos.lucy.hermes-bot"}
 ADAPTER_REQUIRED_SENTINEL_PREFIX = "ADAPTER REQUIRED"
 EXPECTED_GRANTS = {
-    "dev", "repos-mirror", "hermes-dev", "heavy-compute", "nightshift-worker",
-    "content-creator", "contenthub-scanner", "contenthub-render",
-    "backtesting", "trading-research",
+    "contenthub-creator", "contenthub-scanner", "contenthub-render-worker",
+    "qmd-runtime", "hermes-profile", "a008-dev-instance", "hannah-ssh-access",
+    "heavy-compute",
 }
-EXPECTED_DENIALS = {"crm.write", "email.send", "publish", "trading.execute"}
+EXPECTED_DENIALS = {"publish", "email.send", "crm.write", "trading.execute", "ollama-daemon", "portable-sleep-mode", "caffeinate-wrapper"}
 EXPECTED_SECRET_NAMES = ["INFISICAL_MACHINE_IDENTITY_TOKEN", "DISCORD_BOT_TOKEN_LUCY"]
 EXPECTED_SECRET_SCOPES = ["/lucy/runtime", "/hannah/ssh-keys", "/contenthub/runtime"]
 EXPECTED_TAILSCALE_TAG = "tag:contenthub-prod"
@@ -123,11 +123,11 @@ def validate_policy_projection(registry: Path, policy_path: Path, registry_polic
         raise BootstrapError("registry policy projection is stale; regenerate and review it before use")
     block = _extract_agent_block(policy, agent)
     if agent == "lucy":
-        if block.get("discord_identity") != "lucy-bot":
-            raise BootstrapError("Lucy policy projection must keep the lucy-bot Hermes-managed Discord identity")
+        if block.get("discord_identity") is not None:
+            raise BootstrapError("Lucy policy projection must keep discord_identity null (canonical: compute host does not earn a bot identity by default)")
     elif agent == "luna":
-        if block.get("discord_identity") != "luna-bot":
-            raise BootstrapError("Luna policy projection must keep the luna-bot Hermes-managed Discord identity")
+        if block.get("discord_identity") is not None:
+            raise BootstrapError("Luna policy projection must keep discord_identity null (canonical: portable machine does not earn a bot identity by default)")
     else:
         raise BootstrapError(f"unknown agent in policy projection: {agent}")
     for key in ("grants", "forbidden"):

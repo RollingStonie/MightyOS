@@ -39,7 +39,8 @@ FORBIDDEN_MODULES = {"messaging", "discord-bot", "slack-bot", "trading-execute"}
 FORBIDDEN_GRANTS = {"trading.execute", "publish", "email.send", "crm.write"}
 SECRET_NAME = re.compile(r"^[A-Z][A-Z0-9_]{2,127}$")
 EXPECTED_ACCOUNT = "luna-compute"
-EXPECTED_LABELS = ["com.mightyos.luna.watcher", "com.mightyos.luna.hermes-bot"]
+EXPECTED_LABELS = ["com.mightyos.luna.watcher", "com.mightyos.luna.hermes-bot", "com.mightyos.luna.caffeinate"]
+EXPECTED_CAFFEINATE_LABEL = "com.mightyos.luna.caffeinate"
 EXPECTED_GRANTS = {"hermes-profile", "portable-dev", "coding-worker", "git-clone-mirror", "a008-dev-instance", "trading-research"}
 EXPECTED_DENIALS = {"publish", "email.send", "crm.write", "trading.execute", "ollama-daemon", "contenthub-render", "always-on-power"}
 EXPECTED_SECRET_NAMES = ["INFISICAL_MACHINE_IDENTITY_TOKEN", "DISCORD_BOT_TOKEN_LUNA"]
@@ -248,10 +249,27 @@ runpy.run_path("/opt/mightyos/a008/tools/watcher/agent_watcher.py", run_name="__
 
 def caffeinate_wrapper(args: list[str]) -> str:
     rendered = " ".join(xml_escape(arg) for arg in args)
+    # Detect AC power via pmset. pmset -g ps prints a line beginning with "Now drawing from"
+    # whose value is one of: 'AC', 'Battery', or 'UPS'. Only invoke caffeinate on AC/UPS so
+    # Luna still sleeps on battery. On battery the wrapper exits 0 so launchd sees a
+    # clean status and macOS sleep is not blocked.
     return f'''#!/usr/bin/env bash
 # Luna caffeinate wrapper — declares display in use + simulates user activity while docked.
+# Only invokes caffeinate when the laptop is on AC or UPS power; on battery the script
+# exits 0 so launchd observes a clean stop and macOS sleep is not blocked. The launchd
+# plist com.mightyos.luna.caffeinate runs RunAtLoad=false and the OS will keep this
+# wrapper running across reboots, so the absence of caffeinate is a no-op signal.
 set -euo pipefail
-exec /usr/bin/caffeinate {rendered} "$@"
+
+power_source=$(/usr/bin/pmset -g ps | /usr/bin/awk '/Now drawing from/ {{ print $NF }}')
+case "$power_source" in
+  AC|UPS)
+    exec /usr/bin/caffeinate {rendered} "$@"
+    ;;
+  *)
+    exit 0
+    ;;
+esac
 '''
 
 
@@ -262,9 +280,12 @@ def build_plan(manifest: dict[str, Any], root: Path, owner_uid: str | None) -> d
     labels = manifest["launchd"]["labels"]
     wrapper = watcher_loopback_wrapper(manifest["network"]["bind_address"], manifest["network"]["watcher_port"])
     caffeinate = caffeinate_wrapper(manifest["power"]["caffeinate_args"])
+    caffeinate_label = manifest["launchd"]["caffeinate_label"]
+    run_at_load = manifest["launchd"]["run_at_load"]
     services = [
         (labels[0], ["/usr/bin/env", "python3", "/opt/mightyos/libexec/luna-watcher-loopback.py"]),
         (labels[1], ["/usr/bin/env", "python3", "-m", "hermes.runtime", "--profile", "luna"]),
+        (caffeinate_label, ["/opt/mightyos/libexec/luna-caffeinate.sh"]),
     ]
     resources = [{
         "path": "opt/mightyos/libexec/luna-watcher-loopback.py", "mode": "0755", "owner": "root:wheel", "run_as": account,
@@ -274,11 +295,14 @@ def build_plan(manifest: dict[str, Any], root: Path, owner_uid: str | None) -> d
         "launch_domain": "system", "content": caffeinate,
     }]
     for label, command in services:
+        # caffeinate must never run at load — its wrapper is power-state gated and
+        # starts the daemon only when the laptop is on AC/UPS power.
+        run_at_load_for_label = False if label == caffeinate_label else run_at_load
         resources.append({
             "path": f"Library/LaunchDaemons/{label}.plist",
             "mode": "0644", "owner": "root:wheel", "run_as": account,
             "launch_domain": "system",
-            "content": launchd_plist(label, account, command, manifest["launchd"]["run_at_load"]),
+            "content": launchd_plist(label, account, command, run_at_load_for_label),
         })
     return {
         "schema_version": 2, "agent": "luna", "mode": "plan", "root": str(root.resolve()),

@@ -34,8 +34,10 @@
   "hermes": {"enabled": true, "profile_name": "luna", "surface": "discord", "channel": "#agent-luna"},
   "launchd": {
     "kind": "daemon",
-    "labels": ["com.mightyos.luna.watcher", "com.mightyos.luna.hermes-bot"],
-    "run_at_load": true
+    "labels": ["com.mightyos.luna.watcher", "com.mightyos.luna.hermes-bot", "com.mightyos.luna.caffeinate"],
+    "run_at_load": false,
+    "caffeinate_label": "com.mightyos.luna.caffeinate",
+    "caffeinate_policy": "RunAtLoad=false; caffeinate -d -i -u is enforced by the Luna caffeinate wrapper only when AC power is detected via pmset; on battery the wrapper exits 0 so macOS can sleep."
   },
   "power": {
     "always_on_when_powered": false,

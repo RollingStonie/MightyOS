@@ -218,6 +218,36 @@ else:
         self.assertIn('-i', caffeinate)
         self.assertIn('-u', caffeinate)
 
+    def test_caffeinate_wrapper_checks_power_state_before_caffeinate(self):
+        """The wrapper must inspect pmset before invoking caffeinate so Luna sleeps on battery."""
+        with tempfile.TemporaryDirectory() as raw:
+            plan = json.loads(self.run_cli(Path(raw), 'plan').stdout)
+        caffeinate = next(item['content'] for item in plan['resources'] if item['path'].endswith('luna-caffeinate.sh'))
+        # pmset -g ps is the canonical way to read current power source on macOS.
+        self.assertIn('pmset -g ps', caffeinate)
+        # The wrapper only invokes caffeinate on AC or UPS power.
+        self.assertIn('AC|UPS', caffeinate)
+        # The fallback branch exits 0 so launchd observes a clean stop.
+        self.assertIn('exit 0', caffeinate)
+        # Sanity: caffeinate invocation is inside the AC/UPS case branch, not unconditional.
+        self.assertRegex(caffeinate, r'AC\|UPS\)\s*\n\s*exec /usr/bin/caffeinate')
+
+    def test_caffeinate_launchd_plist_is_generated_with_wrapper_path(self):
+        """Critical #2: a launchd plist for com.mightyos.luna.caffeinate must be planned."""
+        with tempfile.TemporaryDirectory() as raw:
+            plan = json.loads(self.run_cli(Path(raw), 'plan').stdout)
+        caffeinate_label = BOOTSTRAP.EXPECTED_CAFFEINATE_LABEL
+        caffeinate_plists = [item for item in plan['resources']
+                             if item['path'] == f'Library/LaunchDaemons/{caffeinate_label}.plist']
+        self.assertEqual(len(caffeinate_plists), 1, f"expected exactly one caffeinate plist, got {len(caffeinate_plists)}")
+        plist = caffeinate_plists[0]['content']
+        # The plist must invoke the wrapper script as its ProgramArguments.
+        self.assertIn('<string>/opt/mightyos/libexec/luna-caffeinate.sh</string>', plist)
+        # The label must be the canonical caffeinate label.
+        self.assertIn(f'<string>{caffeinate_label}</string>', plist)
+        # RunAtLoad must be false — caffeinate is power-state gated, never auto-start.
+        self.assertRegex(plist, r'<key>RunAtLoad</key>\s*<false/>')
+
     def test_watcher_wrapper_executes_import_setup_without_opening_listener(self):
         import http.server
         import runpy
@@ -365,7 +395,12 @@ else:
         self.assertEqual(manifest['role'], 'hermes-portable-dev')
         self.assertNotIn('com.mightyos.luna.ollama', manifest['launchd']['labels'])
         self.assertEqual(manifest['launchd']['labels'], BOOTSTRAP.EXPECTED_LABELS)
-        self.assertTrue(manifest['launchd']['run_at_load'])
+        # Luna is a portable-dev profile — services do NOT auto-start at load.
+        # The caffeinate wrapper additionally requires AC/UPS power before invoking
+        # caffeinate, so its plist is the canonical example for RunAtLoad=false.
+        self.assertFalse(manifest['launchd']['run_at_load'])
+        self.assertEqual(manifest['launchd']['caffeinate_label'], BOOTSTRAP.EXPECTED_CAFFEINATE_LABEL)
+        self.assertIn(BOOTSTRAP.EXPECTED_CAFFEINATE_LABEL, manifest['launchd']['labels'])
         for dropped_grant in ('content-creator', 'contenthub-creator', 'contenthub-render-worker', 'contenthub-scanner', 'local-llm-endpoint', 'hermes-personal', 'repos-mirror'):
             self.assertNotIn(dropped_grant, manifest['required_grants'])
         # Grants tracked against canonical A008 registry/fleet-agents.yaml Luna block.

@@ -359,6 +359,69 @@ else:
         self.assertEqual(BOOTSTRAP.EXPECTED_HANNAH_SSH_KEY_PATH, '/hannah/ssh-keys/id_ed25519.pub')
         self.assertEqual(secrets['allowed_scopes'], ['/lucy/runtime', '/hannah/ssh-keys', '/contenthub/runtime'])
 
+    def test_lucy_adapter_required_marker_covers_contenthub_and_qmd_labels(self):
+        manifest = json.loads(MANIFEST.read_text())
+        adapter_required = manifest['launchd']['adapter_required']
+        for label in ('com.mightyos.contenthub.fastapi', 'com.mightyos.contenthub.celery-worker', 'com.mightyos.contenthub.celery-render-worker', 'com.mightyos.qmd.runtime'):
+            self.assertIn(label, adapter_required, f"{label} must declare an adapter_required contract")
+            self.assertTrue(adapter_required[label].strip(), f"{label} contract must be non-empty")
+        # planner-owned labels must NOT appear in adapter_required
+        self.assertNotIn('com.mightyos.lucy.watcher', adapter_required)
+        self.assertNotIn('com.mightyos.lucy.hermes-bot', adapter_required)
+
+    def test_lucy_plan_emits_fail_loud_sentinel_for_adapter_required_labels(self):
+        with tempfile.TemporaryDirectory() as raw:
+            plan = json.loads(self.run_cli(Path(raw), 'plan').stdout)
+        plists_by_label = {item['path']: item['content'] for item in plan['resources'] if item['path'].startswith('Library/LaunchDaemons/')}
+        sentinel_prefix = BOOTSTRAP.ADAPTER_REQUIRED_SENTINEL_PREFIX
+        for label in ('com.mightyos.contenthub.fastapi', 'com.mightyos.contenthub.celery-worker', 'com.mightyos.contenthub.celery-render-worker', 'com.mightyos.qmd.runtime'):
+            plist = plists_by_label[f'Library/LaunchDaemons/{label}.plist']
+            self.assertIn(sentinel_prefix, plist, f"{label} plist must carry the fail-loud sentinel")
+            self.assertNotIn('/usr/bin/env', plist.split('ProgramArguments')[1].split('</array>')[0] if 'ProgramArguments' in plist else '', f"{label} must not silently fall back to /usr/bin/env true")
+        # planner-owned labels retain their real commands
+        watcher = plists_by_label['Library/LaunchDaemons/com.mightyos.lucy.watcher.plist']
+        self.assertIn('lucy-watcher-loopback.py', watcher)
+        self.assertNotIn(sentinel_prefix, watcher)
+        hermes = plists_by_label['Library/LaunchDaemons/com.mightyos.lucy.hermes-bot.plist']
+        self.assertIn('hermes.runtime', hermes)
+        self.assertNotIn(sentinel_prefix, hermes)
+
+    def test_lucy_validate_rejects_missing_adapter_required_marker(self):
+        with tempfile.TemporaryDirectory() as raw:
+            bad = json.loads(MANIFEST.read_text())
+            del bad['launchd']['adapter_required']['com.mightyos.contenthub.fastapi']
+            path = Path(raw) / 'missing-marker.json'; path.write_text(json.dumps(bad))
+            result = subprocess.run(['python3', str(CLI), 'validate', '--manifest', str(path), '--registry', str(REGISTRY), '--policy', str(POLICY)], text=True, capture_output=True)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn('adapter_required', result.stderr)
+
+    def test_lucy_validate_rejects_adapter_required_marker_on_planner_owned_label(self):
+        with tempfile.TemporaryDirectory() as raw:
+            bad = json.loads(MANIFEST.read_text())
+            bad['launchd']['adapter_required']['com.mightyos.lucy.watcher'] = 'should not be here'
+            path = Path(raw) / 'wrong-marker.json'; path.write_text(json.dumps(bad))
+            result = subprocess.run(['python3', str(CLI), 'validate', '--manifest', str(path), '--registry', str(REGISTRY), '--policy', str(POLICY)], text=True, capture_output=True)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn('planner-owned', result.stderr)
+
+    def test_lucy_validate_rejects_empty_adapter_required_contract(self):
+        with tempfile.TemporaryDirectory() as raw:
+            bad = json.loads(MANIFEST.read_text())
+            bad['launchd']['adapter_required']['com.mightyos.contenthub.fastapi'] = '   '
+            path = Path(raw) / 'empty-contract.json'; path.write_text(json.dumps(bad))
+            result = subprocess.run(['python3', str(CLI), 'validate', '--manifest', str(path), '--registry', str(REGISTRY), '--policy', str(POLICY)], text=True, capture_output=True)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn('non-empty contract', result.stderr)
+
+    def test_lucy_validate_rejects_adapter_required_referencing_unknown_label(self):
+        with tempfile.TemporaryDirectory() as raw:
+            bad = json.loads(MANIFEST.read_text())
+            bad['launchd']['adapter_required']['com.example.unknown'] = 'rogue'
+            path = Path(raw) / 'unknown-label.json'; path.write_text(json.dumps(bad))
+            result = subprocess.run(['python3', str(CLI), 'validate', '--manifest', str(path), '--registry', str(REGISTRY), '--policy', str(POLICY)], text=True, capture_output=True)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn('unknown labels', result.stderr)
+
 
 if __name__ == '__main__':
     unittest.main()

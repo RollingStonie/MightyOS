@@ -60,6 +60,12 @@
       "com.mightyos.contenthub.celery-render-worker",
       "com.mightyos.qmd.runtime"
     ],
+    "adapter_required": {
+      "com.mightyos.contenthub.fastapi": "real ContentHub FastAPI uvicorn start command for contenthub-prod; owned by contenthub-render-worker adapter",
+      "com.mightyos.contenthub.celery-worker": "real ContentHub Celery worker start command for contenthub-prod; owned by contenthub-render-worker adapter",
+      "com.mightyos.contenthub.celery-render-worker": "real ContentHub render Celery worker start command for contenthub-prod; owned by contenthub-render-worker adapter",
+      "com.mightyos.qmd.runtime": "real QMD runtime start command for contenthub-prod-pc; owned by qmd-runtime adapter"
+    },
     "run_at_load": true
   },
   "qmd": {

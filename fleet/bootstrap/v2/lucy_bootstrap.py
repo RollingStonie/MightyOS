@@ -41,6 +41,8 @@ EXPECTED_LABELS = [
     "com.mightyos.contenthub.celery-render-worker",
     "com.mightyos.qmd.runtime",
 ]
+PLANNER_OWNED_LABELS = {"com.mightyos.lucy.watcher", "com.mightyos.lucy.hermes-bot"}
+ADAPTER_REQUIRED_SENTINEL_PREFIX = "ADAPTER REQUIRED"
 EXPECTED_GRANTS = {
     "dev", "repos-mirror", "hermes-dev", "heavy-compute", "nightshift-worker",
     "content-creator", "contenthub-scanner", "contenthub-render",
@@ -223,6 +225,22 @@ def validate_manifest(manifest: dict[str, Any], policy: dict[str, set[str]]) -> 
         raise BootstrapError("launchd labels must match the reviewed Lucy service set")
     if launchd.get("run_at_load") is not True:
         raise BootstrapError("Lucy is stationary always-on; LaunchDaemons must run_at_load == true")
+    adapter_required = launchd.get("adapter_required")
+    if not isinstance(adapter_required, dict):
+        raise BootstrapError("launchd.adapter_required must be an object describing labels awaiting real adapters")
+    unknown_adapters = set(adapter_required) - set(EXPECTED_LABELS)
+    if unknown_adapters:
+        raise BootstrapError(f"launchd.adapter_required references unknown labels: {sorted(unknown_adapters)}")
+    uncovered = (set(EXPECTED_LABELS) - PLANNER_OWNED_LABELS) - set(adapter_required)
+    if uncovered:
+        raise BootstrapError(
+            f"launchd labels without planner-owned commands must declare adapter_required: {sorted(uncovered)}"
+        )
+    for label, contract in adapter_required.items():
+        if label in PLANNER_OWNED_LABELS:
+            raise BootstrapError(f"launchd.adapter_required must not cover planner-owned label: {label}")
+        if not isinstance(contract, str) or not contract.strip():
+            raise BootstrapError(f"launchd.adapter_required[{label}] must be a non-empty contract description")
     qmd = manifest.get("qmd")
     if not isinstance(qmd, dict) or qmd.get("enabled") is not True or qmd.get("scope") != "contenthub-prod-pc" or qmd.get("primary_user") != "hannah":
         raise BootstrapError("Lucy qmd block must be enabled, scoped to contenthub-prod-pc, with primary_user 'hannah'")
@@ -277,14 +295,26 @@ def build_plan(manifest: dict[str, Any], root: Path, owner_uid: str | None) -> d
     if owner_uid is not None:
         raise BootstrapError("owner UID is not accepted: Lucy uses a system LaunchDaemon with explicit UserName")
     labels = manifest["launchd"]["labels"]
+    adapter_required = manifest["launchd"].get("adapter_required", {})
     wrapper = watcher_loopback_wrapper(manifest["network"]["bind_address"], manifest["network"]["watcher_port"])
     label_commands = {
         "com.mightyos.lucy.watcher": ["/usr/bin/env", "python3", "/opt/mightyos/libexec/lucy-watcher-loopback.py"],
         "com.mightyos.lucy.hermes-bot": ["/usr/bin/env", "python3", "-m", "hermes.runtime", "--profile", "lucy"],
     }
-    # ContentHub / QMD labels are owned by their own adapters; the planner emits a stub so the
-    # manifest still drags a plist through the adapter pipeline for the operator to wire up.
-    services = [(label, label_commands.get(label, ["/usr/bin/env", "true"])) for label in labels]
+    # ContentHub / QMD labels are owned by their own adapters; the planner emits a fail-loud
+    # sentinel ProgramArguments so a missing adapter is visible in launchd logs the moment
+    # the daemon tries to start, instead of silently exiting success via /usr/bin/env true.
+    def command_for(label: str) -> list[str]:
+        if label in label_commands:
+            return label_commands[label]
+        contract = adapter_required.get(label)
+        if contract:
+            return [
+                "/bin/sh", "-c",
+                f'/bin/echo "{ADAPTER_REQUIRED_SENTINEL_PREFIX}: {label} — {contract}" >&2; exit 1',
+            ]
+        raise BootstrapError(f"label {label} has no planner-owned command and no adapter_required contract")
+    services = [(label, command_for(label)) for label in labels]
     resources = [{
         "path": "opt/mightyos/libexec/lucy-watcher-loopback.py", "mode": "0755", "owner": "root:wheel", "run_as": account,
         "launch_domain": "system", "content": wrapper,

@@ -107,10 +107,7 @@ else:
         manifest = json.loads(MANIFEST.read_text())
         self.assertTrue(manifest['power']['caffeinate_required_when_docked'])
         self.assertFalse(manifest['power']['always_on_when_powered'])
-        caffeinate_args = manifest['power']['caffeinate_args']
-        self.assertIn('-d', caffeinate_args)
-        self.assertIn('-i', caffeinate_args)
-        self.assertIn('-u', caffeinate_args)
+        self.assertEqual(manifest['power']['caffeinate_args'], ['-d', '-i', '-u'])
 
     def test_wrapper_script_path_matches(self):
         wrapper = REPO / "fleet/bootstrap/luna-bootstrap-v2"
@@ -140,6 +137,47 @@ else:
             result = self.run_cli(Path(raw), 'apply', '--owner-uid', '501')
         self.assertEqual(result.returncode, 2)
         self.assertIn('apply denied', result.stderr)
+
+    def test_dry_run_apply_produces_plan_output_without_mutating(self):
+        """Warning #5: --dry-run on apply prints the plan JSON and exits 0 without any mutation."""
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw) / 'fake-root'
+            result = self.run_cli(root, 'apply', '--dry-run')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        plan = json.loads(result.stdout)
+        self.assertEqual(plan['mode'], 'plan')
+        self.assertNotIn('APPLIED', result.stdout)
+        # Confirm no receipt directory was created under the fake root.
+        self.assertFalse((Path(raw) / 'fake-root' / '.mightyos').exists())
+
+    def test_dry_run_rollback_without_receipt_does_not_crash_or_mutate(self):
+        """Warning #5: --dry-run on rollback with no applied receipt is a clean plan (no crash, no mutation)."""
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw) / 'fake-root'
+            # write a non-zero adapter file so run_cli's sha256 helper accepts it
+            adapter_path = Path(raw) / 'unused.py'; adapter_path.write_text('#!/usr/bin/env python3\n')
+            result = self.run_cli(root, 'rollback', '--dry-run', '--approved-runtime-adapter', str(adapter_path))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        # Plan output is identical to a fresh 'plan' call.
+        plan = json.loads(result.stdout)
+        self.assertEqual(plan['mode'], 'plan')
+        # Confirm no receipt directory was created.
+        self.assertFalse((Path(raw) / 'fake-root' / '.mightyos').exists())
+
+    def test_dry_run_apply_matches_explicit_plan_output(self):
+        """Warning #5: --dry-run on apply and the explicit 'plan' command produce identical output (modulo root)."""
+        with tempfile.TemporaryDirectory() as raw:
+            plan_root = Path(raw) / 'plan-root'
+            dry_root = Path(raw) / 'dry-root'
+            plan_result = self.run_cli(plan_root, 'plan')
+            dry_result = self.run_cli(dry_root, 'apply', '--dry-run')
+        self.assertEqual(plan_result.returncode, 0, plan_result.stderr)
+        self.assertEqual(dry_result.returncode, 0, dry_result.stderr)
+        plan_obj = json.loads(plan_result.stdout); dry_obj = json.loads(dry_result.stdout)
+        # root path differs by construction; normalize.
+        self.assertEqual(plan_obj['manifest_sha256'], dry_obj['manifest_sha256'])
+        self.assertEqual(plan_obj['binding'], dry_obj['binding'])
+        self.assertEqual(plan_obj['resources'], dry_obj['resources'])
 
     def test_apply_is_idempotent_and_receipt_has_no_secret_value(self):
         with tempfile.TemporaryDirectory() as raw:
@@ -218,10 +256,62 @@ else:
             plan = json.loads(result.stdout)
         self.assertEqual(result.returncode, 0, result.stderr)
         caffeinate = next(item['content'] for item in plan['resources'] if item['path'].endswith('luna-caffeinate.sh'))
-        self.assertIn('caffeinate', caffeinate)
-        self.assertIn('-d', caffeinate)
-        self.assertIn('-i', caffeinate)
-        self.assertIn('-u', caffeinate)
+        # The wrapper calls caffeinate with EXACTLY ['-d', '-i', '-u'] — no extras, nothing missing.
+        import re as _re
+        match = _re.search(r'caffeinate(.*?)\"\$@\"', caffeinate)
+        self.assertIsNotNone(match, f'no caffeinate invocation found in wrapper: {caffeinate!r}')
+        self.assertEqual(['-d', '-i', '-u'], match.group(1).split())
+
+    def test_validate_rejects_extra_caffeinate_arg(self):
+        """Warning #6: caffeinate_args must be EXACTLY ['-d', '-i', '-u']; no extra flags like -t."""
+        import shutil as _shutil
+        if not MANIFEST.exists():
+            self.skipTest(f'manifest missing: {MANIFEST}')
+        with tempfile.TemporaryDirectory() as raw:
+            raw = Path(raw)
+            bad = json.loads(MANIFEST.read_text())
+            bad['power']['caffeinate_args'] = ['-d', '-i', '-u', '-t']
+            bad_path = raw / 'bad.json'; bad_path.write_text(json.dumps(bad))
+            result = subprocess.run(
+                ['python3', str(CLI), 'validate', '--manifest', str(bad_path), '--registry', str(REGISTRY), '--policy', str(POLICY)],
+                text=True, capture_output=True,
+            )
+        self.assertEqual(result.returncode, 2, result.stderr)
+        self.assertIn('caffeinate_args', result.stderr)
+        self.assertIn("['-d', '-i', '-u', '-t']", result.stderr)
+
+    def test_validate_rejects_missing_caffeinate_arg(self):
+        """Warning #6: caffeinate_args must be EXACTLY ['-d', '-i', '-u']; missing a flag is rejected."""
+        import shutil as _shutil
+        if not MANIFEST.exists():
+            self.skipTest(f'manifest missing: {MANIFEST}')
+        with tempfile.TemporaryDirectory() as raw:
+            raw = Path(raw)
+            bad = json.loads(MANIFEST.read_text())
+            bad['power']['caffeinate_args'] = ['-d', '-i']
+            bad_path = raw / 'bad.json'; bad_path.write_text(json.dumps(bad))
+            result = subprocess.run(
+                ['python3', str(CLI), 'validate', '--manifest', str(bad_path), '--registry', str(REGISTRY), '--policy', str(POLICY)],
+                text=True, capture_output=True,
+            )
+        self.assertEqual(result.returncode, 2, result.stderr)
+        self.assertIn('caffeinate_args', result.stderr)
+        self.assertIn("['-d', '-i']", result.stderr)
+
+    def test_validate_accepts_exact_caffeinate_args(self):
+        """Warning #6: the only accepted form is exactly ['-d', '-i', '-u']."""
+        if not MANIFEST.exists():
+            self.skipTest(f'manifest missing: {MANIFEST}')
+        with tempfile.TemporaryDirectory() as raw:
+            good = json.loads(MANIFEST.read_text())
+            good['power']['caffeinate_args'] = ['-d', '-i', '-u']
+            good_path = Path(raw) / 'good.json'; good_path.write_text(json.dumps(good))
+            result = subprocess.run(
+                ['python3', str(CLI), 'validate', '--manifest', str(good_path), '--registry', str(REGISTRY), '--policy', str(POLICY)],
+                text=True, capture_output=True,
+            )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('VALID', result.stdout)
 
     def test_caffeinate_wrapper_checks_power_state_before_caffeinate(self):
         """The wrapper must inspect pmset before invoking caffeinate so Luna sleeps on battery."""

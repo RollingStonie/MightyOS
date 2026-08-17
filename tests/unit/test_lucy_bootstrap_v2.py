@@ -83,6 +83,46 @@ else:
         self.assertEqual(result.returncode, 2)
         self.assertIn('apply denied', result.stderr)
 
+    def test_dry_run_apply_produces_plan_output_without_mutating(self):
+        """Warning #5: --dry-run on apply prints the plan JSON and exits 0 without any mutation."""
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw) / 'fake-root'
+            result = self.run_cli(root, 'apply', '--dry-run')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        plan = json.loads(result.stdout)
+        self.assertEqual(plan['mode'], 'plan')
+        self.assertNotIn('APPLIED', result.stdout)
+        # Confirm no receipt directory was created under the fake root.
+        self.assertFalse((Path(raw) / 'fake-root' / '.mightyos').exists())
+
+    def test_dry_run_rollback_does_not_crash_or_mutate(self):
+        """Warning #5: --dry-run on rollback without an applied receipt prints plan (no crash, no mutation)."""
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw) / 'fake-root'
+            # write a non-zero adapter file so run_cli's sha256 helper accepts it
+            adapter_path = Path(raw) / 'unused.py'; adapter_path.write_text('#!/usr/bin/env python3\n')
+            result = self.run_cli(root, 'rollback', '--dry-run', '--approved-runtime-adapter', str(adapter_path))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        plan = json.loads(result.stdout)
+        self.assertEqual(plan['mode'], 'plan')
+        # Confirm no receipt directory was created.
+        self.assertFalse((Path(raw) / 'fake-root' / '.mightyos').exists())
+
+    def test_dry_run_apply_matches_explicit_plan_output(self):
+        """Warning #5: --dry-run on apply produces identical plan output to the explicit 'plan' command."""
+        with tempfile.TemporaryDirectory() as raw:
+            plan_root = Path(raw) / 'plan-root'
+            dry_root = Path(raw) / 'dry-root'
+            plan_result = self.run_cli(plan_root, 'plan')
+            dry_result = self.run_cli(dry_root, 'apply', '--dry-run')
+        self.assertEqual(plan_result.returncode, 0, plan_result.stderr)
+        self.assertEqual(dry_result.returncode, 0, dry_result.stderr)
+        plan_obj = json.loads(plan_result.stdout); dry_obj = json.loads(dry_result.stdout)
+        # root path differs by construction; normalize.
+        self.assertEqual(plan_obj['manifest_sha256'], dry_obj['manifest_sha256'])
+        self.assertEqual(plan_obj['binding'], dry_obj['binding'])
+        self.assertEqual(plan_obj['resources'], dry_obj['resources'])
+
     def test_apply_is_idempotent_and_receipt_has_no_secret_value(self):
         with tempfile.TemporaryDirectory() as raw:
             root = Path(raw) / 'fake-root'; adapter = self.fake_adapter(Path(raw))

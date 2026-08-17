@@ -205,8 +205,12 @@ def validate_manifest(manifest: dict[str, Any], policy: dict[str, set[str]]) -> 
     caffeinate_args = power.get("caffeinate_args")
     if not isinstance(caffeinate_args, list) or not all(isinstance(arg, str) for arg in caffeinate_args):
         raise BootstrapError("Luna power.caffeinate_args must be a list of strings")
-    if not {"-d", "-i", "-u"} <= set(caffeinate_args):
-        raise BootstrapError("Luna caffeinate_args must include -d (display), -i (idle-sleep prevention), and -u (user activity) flags")
+    expected_caffeinate_args = ["-d", "-i", "-u"]
+    if caffeinate_args != expected_caffeinate_args:
+        raise BootstrapError(
+            "Luna caffeinate_args must be exactly ['-d', '-i', '-u'] (display, idle-sleep prevention, user activity); got "
+            f"{caffeinate_args!r}"
+        )
 
 
 def launchd_plist(label: str, account: str, command: list[str], run_at_load: bool) -> str:
@@ -633,6 +637,7 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument("--evidence", type=Path)
     p.add_argument("--owner-uid")
     p.add_argument("--approved-runtime-adapter", type=Path)
+    p.add_argument("--dry-run", action="store_true", help="Print the change list instead of mutating (for apply/rollback/offboard, behaves like plan)")
     return p
 
 
@@ -640,6 +645,8 @@ def main(argv: list[str] | None = None) -> int:
     args = parser().parse_args(argv)
     if args.evidence is None:
         args.evidence = evidence_path(args.root)
+    if args.dry_run and args.command in {"apply", "rollback", "offboard"}:
+        args.command = "plan"
     try:
         return globals()[f"command_{args.command}"](args)
     except BootstrapError as error:

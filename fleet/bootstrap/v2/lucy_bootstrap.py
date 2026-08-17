@@ -656,6 +656,7 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument("--evidence", type=Path)
     p.add_argument("--owner-uid")
     p.add_argument("--approved-runtime-adapter", type=Path)
+    p.add_argument("--dry-run", action="store_true", help="Print the change list instead of mutating (for apply/rollback/offboard, behaves like plan)")
     return p
 
 
@@ -663,6 +664,8 @@ def main(argv: list[str] | None = None) -> int:
     args = parser().parse_args(argv)
     if args.evidence is None:
         args.evidence = evidence_path(args.root)
+    if args.dry_run and args.command in {"apply", "rollback", "offboard"}:
+        args.command = "plan"
     try:
         return globals()[f"command_{args.command}"](args)
     except BootstrapError as error:

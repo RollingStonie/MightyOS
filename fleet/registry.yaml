@@ -1,5 +1,17 @@
-# fleet/registry.yaml — who each agent is, what tools they use, what they produce
-# Read by all agents at session start. Written only by Kenneth/Claire.
+# ============================================================
+# GENERATED FILE — do not hand-edit.
+# Compiled by tools/fleet_registry/publish.py from A008 registry/fleet-agents.yaml
+# source_commit: 715708ad566bb4783642eeb088c34b199c2b685b
+# published_at: 2026-08-17T22:15:43.955032+00:00
+# Edit the source in A008, not this file — hand edits here are drift and will be
+# silently overwritten by the next publish run.
+# ============================================================
+
+# registry/fleet-agents.yaml — CANONICAL EDIT SURFACE for fleet agent identity.
+# Compiled + published into MightyOS/fleet/registry.yaml by tools/fleet_registry/publish.py
+# (FLEET-20, 2026-08-09). Edit THIS file, never MightyOS/fleet/registry.yaml directly — a hand
+# edit there will be silently overwritten by the next publish run and is itself a drift signal
+# the next drift_check.py pass will catch.
 #
 # Unified capability grant model (M016 spec 2026-07-23 § Unified capability grant model):
 #   grants[]    — capability tokens this agent may exercise. A task/manifest may only be
@@ -13,19 +25,23 @@
 #                 scopes derive. Infisical machine identities are `planned` (INFRA-01, not
 #                 yet provisioned); names are reserved here so manifests can reference them.
 #   tailscale   — MagicDNS name (IP kept in tailscale_ip for backward compat).
+#   discord_identity_verified_at — ISO date (YYYY-MM-DD) this agent's discord_identity/
+#                 discord_app_id was last confirmed to match the LIVE running bot (via
+#                 tools/fleet_registry/drift_check.py --live), or null if never verified by
+#                 this mechanism. drift_check.py flags null or >14-day-old values as stale.
+#   discord_app_id — the Discord application id (NOT a secret — safe to publish). The bot
+#                 TOKEN never appears in this file; it stays in
+#                 ~/.hermes/secrets/discord_agents.json or Infisical.
 #
-# PLATFORM BOUNDARY (decided 2026-08-05): QM is the preferred employee-facing
-# platform for a gated pilot; it is NOT a fleet agent and therefore has no row
-# in this registry. A008 remains the governance/delivery kernel, Plane remains
-# the sole company work ledger, and Hermes remains the edge runtime for the
-# device/profile identities below. Buzz is reference-only during the QM pilot.
-# No Mike/Mighty service was changed when this decision was recorded.
-#
-# EDIT-SURFACE NOTE (decided 2026-07-23, M016 spec Revision pt 3): the fleet registry's
-# canonical EDIT SURFACE is moving to A008 (AG_APP/A008_Agentic OS/registry/agents.yaml);
-# A008 CI will compile + publish this file into MightyOS so the 5-min device git-pull
-# distribution channel keeps working. Until that CI-publish step exists, this file remains
-# both edit surface and distribution channel. Do not fork a second registry.
+# PLATFORM BOUNDARY (2026-08-05; workflow-authority clarification accepted
+# 2026-08-11): QM is the preferred employee-facing platform for a gated pilot;
+# it is NOT a fleet agent and therefore has no row in this registry. A008 remains
+# the governance/delivery kernel and canonical machine authority for orchestrated
+# workflow/action lifecycle, leases, approvals, budgets, and audit. Plane remains
+# the human-visible company work ledger/projection and manual-intent surface; it
+# does not mutate canonical A008 state directly. Hermes remains the edge runtime
+# for the device/profile identities below. Buzz is reference-only during the QM
+# pilot. See ai/decisions/2026-08-11-a008-workflow-authority-plane-projection-adr.md.
 
 claire:
   device: MacBook M1 Max 32GB
@@ -33,6 +49,8 @@ claire:
   tailscale: claire.tailnet
   state: ready
   discord_identity: claire-bot
+  discord_app_id: null   # TODO: backfill from the live bot (drift_check.py --live) or Kenneth
+  discord_identity_verified_at: null   # never verified by this mechanism yet
   infisical_identity: claire-runtime   # planned — Infisical machine identity not yet provisioned (INFRA-01)
   primary_model: claude-sonnet-4-6
   fallback_model: claude-opus-4-8
@@ -48,6 +66,8 @@ mike:
   tailscale: mike.tailnet
   state: ready
   discord_identity: mike-bot
+  discord_app_id: null   # TODO: backfill from the live bot (drift_check.py --live) or Kenneth
+  discord_identity_verified_at: null   # never verified by this mechanism yet
   infisical_identity: mike-runtime     # planned — INFRA-01
   primary_model: llama3.2:3b
   fallback_model: deepseek-chat
@@ -76,6 +96,8 @@ mighty:
   tailscale: mighty.tailnet
   state: ready
   discord_identity: mighty-bot
+  discord_app_id: null   # TODO: backfill from the live bot (drift_check.py --live) or Kenneth
+  discord_identity_verified_at: null   # never verified by this mechanism yet
   infisical_identity: mighty-runtime   # planned — INFRA-01
   primary_model: deepseek-chat
   fallback_model: claude-haiku-4-5
@@ -91,46 +113,53 @@ mighty:
 
 brian:
   device: Dell Vostro 15 3510 (i7-1165G7, 16GB RAM, Intel Iris Xe)
-  tailscale_ip: TBD
+  tailscale_ip: 100.127.107.122         # verified 2026-08-07; desktop-qq0ko3m
   tailscale: brian.tailnet
-  state: registered                    # provisioned gate = "Tailscale + tags live" (M016 spec lifecycle); NOT passed yet — see blocked_by. Advances to provisioned once Tailscale is up.
+  state: registered                    # lifecycle remains registered; provisioning never completed
   discord_identity: brian-bot
+  discord_app_id: null   # TODO: backfill from the live bot (drift_check.py --live) or Kenneth
+  discord_identity_verified_at: null   # never verified by this mechanism yet
   infisical_identity: brian-runtime    # planned — INFRA-01
-  status: provisioning
+  status: dormant                      # legitimate device; Kenneth cannot currently locate it
   capabilities: [contenthub-scanner, light-cron, outreach-sending]
   grants: [contenthub-scanner, light-cron, outreach-sending, email.send]   # sender role — email.send is a grant here, not forbidden
   forbidden: [publish, crm.write]
   role: always-on-cpu-network-box
-  blocked_by: Tailscale setup
+  blocked_by: dormant — physical verification before resuming provisioning
+  # Tailscale node nftQGDhYCD21CNTRL joined 2026-06-08 22:58 BST; last seen 2026-06-10.
+  # Keep this record; do not prune until Kenneth physically confirms the machine's status.
 
 lucy:
   device: MacBook M5 128GB (planned stationary home anchor)
   tailscale_ip: TBD
   tailscale: lucy.tailnet
   state: registered
-  discord_identity: lucy-bot            # Kenneth Fleet HQ — Hermes-managed Discord identity (Lucy's own Hermes profile)
+  discord_identity: null               # compute host does not earn a bot identity by default
+  discord_app_id: null   # TODO: backfill from the live bot (drift_check.py --live) or Kenneth
+  discord_identity_verified_at: null   # never verified by this mechanism yet
   infisical_identity: lucy-runtime     # planned — INFRA-01
-  hermes_profile: lucy
-  capabilities: [dev, repos-mirror, hermes-dev, heavy-compute, nightshift-worker, content-creator, contenthub-scanner, contenthub-render, backtesting, trading-research]
-  grants: [dev, repos-mirror, hermes-dev, heavy-compute, nightshift-worker, content-creator, contenthub-scanner, contenthub-render, backtesting, trading-research]
-  forbidden: [publish, email.send, crm.write, trading.execute]   # research/compute + ContentHub production; trading.execute forbidden; trading-research is a grant
+  capabilities: [contenthub-creator, contenthub-scanner, contenthub-render-worker, qmd-runtime, hermes-profile, a008-dev-instance, hannah-ssh-access, heavy-compute]
+  grants: [contenthub-creator, contenthub-scanner, contenthub-render-worker, qmd-runtime, hermes-profile, a008-dev-instance, hannah-ssh-access, heavy-compute]
+  forbidden: [publish, email.send, crm.write, trading.execute, ollama-daemon, portable-sleep-mode, caffeinate-wrapper]
   status: planned
-  role: Hannah's primary PC running ContentHub production (creator + scanner + render-worker) inside QMD; stationary always-on; brokers dev + nightshift + backtesting + trading-research for Hannah
+  role: hannah-contenthub-pc; stationary always-on 24/7 compute anchor; ContentHub creator/scanner/render worker; QMD runtime under hannah + kenneth; Hermes profile "lucy"; A008 dev instance; Hannah SSH access; supply contenthub-prod grants
 
 luna:
   device: MacBook M5 128GB (planned portable machine)
   tailscale_ip: TBD
   tailscale: luna.tailnet
   state: registered
-  discord_identity: luna-bot            # Kenneth Fleet HQ — Hermes-managed Discord identity (Luna's own Hermes profile)
+  discord_identity: null               # portable machine does not earn a bot identity by default
+  discord_app_id: null   # TODO: backfill from the live bot (drift_check.py --live) or Kenneth
+  discord_identity_verified_at: null   # never verified by this mechanism yet
   infisical_identity: luna-runtime      # planned — provision only during approved onboarding
-  hermes_profile: luna
-  capabilities: [dev, repos-mirror, hermes-personal, heavy-compute, trading-research, nightshift-worker, portable-dev]
-  grants: [dev, repos-mirror, hermes-personal, heavy-compute, trading-research, nightshift-worker, portable-dev]
-  forbidden: [publish, email.send, crm.write, trading.execute]   # trading.execute forbidden; trading-research is a grant; details deferred
+  hermes_profile: luna                # portable-machine Hermes edge profile (matches Ashley/George convention)
+  capabilities: [hermes-profile, portable-dev, coding-worker, git-clone-mirror, a008-dev-instance, trading-research]
+  grants: [hermes-profile, portable-dev, coding-worker, git-clone-mirror, a008-dev-instance, trading-research]
+  forbidden: [publish, email.send, crm.write, trading.execute, ollama-daemon, contenthub-render, always-on-power]
   status: planned
-  role: portable Hermes+dev worker (repos mirror + A008 dev-instance + Hermes profile); sleeps on battery; trading-research (deferred details)
-  expected_daily_output: on demand when docked on power
+  role: hermes-portable-dev; portable dormant-when-offline machine; caffeinate -d -i -u while powered; Hermes profile "luna"; on-demand coding worker + trading research; A008 dev instance; supply luna-personal grants + fleet-core read-only
+  expected_daily_output: on demand
 
 ashley:
   device: vps-profile                  # Hermes profile on mighty's Hostinger KVM2 VPS (2vCPU / 8GB RAM) — not a separate box
@@ -152,3 +181,29 @@ ashley:
   # (systemd unit ashley-gateway.service, User=root). forbidden:[sysadmin, docker-admin]
   # is registry-level intent only — NOT OS-enforced while running as root. Pending
   # migration to a dedicated unprivileged user (see M016 hardening receipt / migration plan).
+
+george:
+  device: vps-profile                  # Hermes profile on mighty's Hostinger KVM2 VPS (2vCPU / 8GB RAM) — not a separate box
+  tailscale_ip: 100.66.96.51           # shares mighty's VPS host
+  tailscale: mighty.tailnet            # co-resident on mighty's VPS
+  state: registered                    # discovered undocumented 2026-08-09 (process up since 2026-08-08); verification pending — promote to probation once model/Slack/heartbeat verified
+  discord_identity: null               # brand-knowledge Slack librarian — no Discord identity per registry convention
+  discord_app_id: null
+  discord_identity_verified_at: null
+  infisical_identity: george-runtime   # planned — INFRA-01 (machine identity not yet provisioned)
+  primary_model: null                  # TODO: verify on VPS — what model is the live `hermes -p george gateway run --replace` actually using?
+  comms: slack-only                    # intended Slack librarian surface — channel TBD post-verification
+  capabilities: [brand-knowledge, employee-queries, slack-librarian]
+  grants: [employee-query]             # read-only knowledge queries against brand/company corpus
+  forbidden: [publish, email.send, crm.write, lead-scrape, sysadmin, docker-admin, write]
+  hermes_profile: george
+  profile_path_observed: /opt/hermes-agent            # per kenneth-fleet skill, owned by user `george-+`
+  hermes_home_status: read-only-verification-required  # same discipline as ashley/mighty — confirm systemd env + process cmdline first
+  produces: brand/company knowledge answers for employee Slack queries
+  expected_daily_output: TBD — pending verification + Slack channel setup
+  # DISCOVERED 2026-08-09: live `hermes -p george gateway run --replace` process running (up since Aug 8) with no prior registry/skill entry anywhere. Kenneth confirmed intent (brand-knowledge Slack librarian).
+  # TODO (FLEET onboarding checklist):
+  #   1. SSH to VPS read-only audit: verify profile path, model, Slack connection, heartbeat loop, SOUL/AGENTS.md existence
+  #   2. Decide heartbeat cadence and Slack channel for librarian queries
+  #   3. Provision Infisical `george-runtime` machine identity
+  #   4. Promote state registered → probation once verified, then ready once Slack channel is live

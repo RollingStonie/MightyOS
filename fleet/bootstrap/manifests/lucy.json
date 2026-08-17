@@ -1,10 +1,10 @@
 {
   "schema_version": 2,
   "agent": "lucy",
-  "role": "dev-workstation",
-  "service_account": "lucy-compute",
+  "role": "hannah-contenthub-pc",
+  "service_account": "contenthub-prod",
   "watcher_source": {"path": "opt/mightyos/a008/tools/watcher/agent_watcher.py", "sha256": "eb9c2b7a18eec0f066eddb2c0e3104243dd80af084b20c5e8e98748b573f5339", "mode": "0644", "owner": "root:wheel"},
-  "required_grants": ["backtesting", "dev", "heavy-compute", "hermes-dev", "local-llm-endpoint", "nightshift-worker", "repos-mirror", "trading-research"],
+  "required_grants": ["dev", "repos-mirror", "hermes-dev", "heavy-compute", "nightshift-worker", "content-creator", "contenthub-scanner", "contenthub-render", "backtesting", "trading-research"],
   "denied_grants": ["crm.write", "email.send", "publish", "trading.execute"],
   "lifecycle": {
     "initial": "registered",
@@ -14,26 +14,63 @@
   "modules": [
     "tailscale-node",
     "a008-watcher",
-    "a008-dev-instance",
-    "git-clone-mirror",
     "hermes-profile",
+    "git-clone-mirror",
+    "a008-dev-instance",
     "background-worker",
+    "hannah-user-account",
+    "contenthub-creator",
+    "contenthub-scanner",
+    "contenthub-render-worker",
+    "qmd-runtime",
     "trading-research"
   ],
   "network": {
     "watcher_port": 8109,
     "bind_address": "127.0.0.1",
-    "tailscale_acl": "tag:lucy-compute",
-    "tailscale_tag": "tag:lucy-compute"
+    "tailscale_acl": "tag:contenthub-prod",
+    "tailscale_tag": "tag:contenthub-prod",
+    "contenthub_web_ui": {
+      "enabled": true,
+      "bind": "127.0.0.1:8012",
+      "external_access": "tailscale-only",
+      "auth": "plane-or-discord"
+    },
+    "hannah_ssh": {
+      "enabled": true,
+      "user": "hannah",
+      "ssh_key_source": "infisical",
+      "listen": "0.0.0.0:22",
+      "firewall": "tailscale-only"
+    }
   },
   "secrets": {
     "required_names": ["INFISICAL_MACHINE_IDENTITY_TOKEN", "DISCORD_BOT_TOKEN_LUCY"],
-    "allowed_scopes": ["/lucy/runtime", "Fleet Core/prod/lucy"]
+    "allowed_scopes": ["/lucy/runtime", "/hannah/ssh-keys", "/contenthub/runtime"],
+    "hannah_ssh_key_path": "/hannah/ssh-keys/id_ed25519.pub"
   },
   "hermes": {"enabled": true, "profile_name": "lucy", "surface": "discord", "channel": "#agent-lucy"},
   "launchd": {
     "kind": "daemon",
-    "labels": ["com.mightyos.lucy.watcher", "com.mightyos.lucy.hermes-bot"],
-    "run_at_load": false
+    "labels": [
+      "com.mightyos.lucy.watcher",
+      "com.mightyos.lucy.hermes-bot",
+      "com.mightyos.contenthub.fastapi",
+      "com.mightyos.contenthub.celery-worker",
+      "com.mightyos.contenthub.celery-render-worker",
+      "com.mightyos.qmd.runtime"
+    ],
+    "run_at_load": true
+  },
+  "qmd": {
+    "enabled": true,
+    "scope": "contenthub-prod-pc",
+    "users": ["hannah", "kenneth"],
+    "primary_user": "hannah",
+    "notes": "Lucy is the shared ContentHub PC inside QMD. Hannah is the primary operator; Kenneth has admin access."
+  },
+  "power": {
+    "always_on_when_powered": true,
+    "caffeinate_required_when_docked": false
   }
 }

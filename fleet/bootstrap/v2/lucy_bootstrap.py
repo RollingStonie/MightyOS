@@ -26,16 +26,32 @@ DEFAULT_POLICY = ROOT / "fleet/bootstrap/v2/registry-policy.json"
 ALLOWED_MODULES = {
     "tailscale-node", "a008-watcher", "background-worker", "trading-research",
     "hermes-profile", "git-clone-mirror", "a008-dev-instance",
+    "hannah-user-account", "contenthub-creator", "contenthub-scanner",
+    "contenthub-render-worker", "qmd-runtime",
 }
-FORBIDDEN_MODULES = {"messaging", "discord-bot", "slack-bot", "trading-execute"}
+FORBIDDEN_MODULES = {"messaging", "discord-bot", "slack-bot", "trading-execute", "caffeinate-wrapper"}
 FORBIDDEN_GRANTS = {"trading.execute", "publish", "email.send", "crm.write"}
 SECRET_NAME = re.compile(r"^[A-Z][A-Z0-9_]{2,127}$")
-EXPECTED_ACCOUNT = "lucy-compute"
-EXPECTED_LABELS = ["com.mightyos.lucy.watcher", "com.mightyos.lucy.hermes-bot"]
-EXPECTED_GRANTS = {"backtesting", "dev", "heavy-compute", "hermes-dev", "local-llm-endpoint", "nightshift-worker", "repos-mirror", "trading-research"}
+EXPECTED_ACCOUNT = "contenthub-prod"
+EXPECTED_LABELS = [
+    "com.mightyos.lucy.watcher",
+    "com.mightyos.lucy.hermes-bot",
+    "com.mightyos.contenthub.fastapi",
+    "com.mightyos.contenthub.celery-worker",
+    "com.mightyos.contenthub.celery-render-worker",
+    "com.mightyos.qmd.runtime",
+]
+EXPECTED_GRANTS = {
+    "dev", "repos-mirror", "hermes-dev", "heavy-compute", "nightshift-worker",
+    "content-creator", "contenthub-scanner", "contenthub-render",
+    "backtesting", "trading-research",
+}
 EXPECTED_DENIALS = {"crm.write", "email.send", "publish", "trading.execute"}
 EXPECTED_SECRET_NAMES = ["INFISICAL_MACHINE_IDENTITY_TOKEN", "DISCORD_BOT_TOKEN_LUCY"]
-EXPECTED_SECRET_SCOPES = ["/lucy/runtime", "Fleet Core/prod/lucy"]
+EXPECTED_SECRET_SCOPES = ["/lucy/runtime", "/hannah/ssh-keys", "/contenthub/runtime"]
+EXPECTED_TAILSCALE_TAG = "tag:contenthub-prod"
+EXPECTED_TAILSCALE_ACL = "tag:contenthub-prod"
+EXPECTED_HANNAH_SSH_KEY_PATH = "/hannah/ssh-keys/id_ed25519.pub"
 WATCHER_SOURCE = {"path": "opt/mightyos/a008/tools/watcher/agent_watcher.py", "sha256": "eb9c2b7a18eec0f066eddb2c0e3104243dd80af084b20c5e8e98748b573f5339", "mode": "0644", "owner": "root:wheel"}
 
 
@@ -133,7 +149,7 @@ def reject_secret_channels() -> None:
 
 
 def validate_manifest(manifest: dict[str, Any], policy: dict[str, set[str]]) -> None:
-    expected_top = {"schema_version", "agent", "role", "service_account", "watcher_source", "required_grants", "denied_grants", "lifecycle", "modules", "network", "secrets", "hermes", "launchd"}
+    expected_top = {"schema_version", "agent", "role", "service_account", "watcher_source", "required_grants", "denied_grants", "lifecycle", "modules", "network", "secrets", "hermes", "launchd", "qmd", "power"}
     if set(manifest) != expected_top:
         raise BootstrapError("manifest schema is closed; unknown or missing top-level fields")
     if manifest.get("schema_version") != 2 or manifest.get("agent") != "lucy":
@@ -145,26 +161,39 @@ def validate_manifest(manifest: dict[str, Any], policy: dict[str, set[str]]) -> 
     forbidden = set(modules) & FORBIDDEN_MODULES
     if unknown or forbidden:
         raise BootstrapError(f"unapproved modules: {sorted(unknown | forbidden)}")
+    if "caffeinate-wrapper" in set(modules):
+        raise BootstrapError("Lucy is stationary always-on; caffeinate-wrapper must never be present")
     if policy["forbidden"] != EXPECTED_DENIALS:
         raise BootstrapError("registry forbidden grants must retain Lucy's safety denials")
     if policy["grants"] != EXPECTED_GRANTS or set(manifest["required_grants"]) != EXPECTED_GRANTS or set(manifest["denied_grants"]) != EXPECTED_DENIALS:
         raise BootstrapError("Lucy registry grants no longer match the role contract")
     if "trading.execute" in policy["grants"] or "trading.execute" not in policy["forbidden"]:
         raise BootstrapError("trading.execute must be forbidden, never granted")
-    if set(manifest.get("network", {})) != {"watcher_port", "bind_address", "tailscale_acl", "tailscale_tag"} or manifest["network"].get("bind_address") != "127.0.0.1":
-        raise BootstrapError("network endpoints must bind localhost; Tailscale exposure needs a later contract")
-    if manifest.get("network", {}).get("watcher_port") != 8109:
+    network = manifest.get("network", {})
+    expected_network = {"watcher_port", "bind_address", "tailscale_acl", "tailscale_tag", "contenthub_web_ui", "hannah_ssh"}
+    if set(network) != expected_network or network.get("bind_address") != "127.0.0.1":
+        raise BootstrapError("Lucy network endpoints must bind localhost; Tailscale exposure needs a later contract")
+    if network.get("watcher_port") != 8109:
         raise BootstrapError("Lucy watcher must use port 8109")
-    if manifest["network"].get("tailscale_acl") != "tag:lucy-compute" or manifest["network"].get("tailscale_tag") != "tag:lucy-compute":
+    if network.get("tailscale_acl") != EXPECTED_TAILSCALE_ACL or network.get("tailscale_tag") != EXPECTED_TAILSCALE_TAG:
         raise BootstrapError("Lucy requires the exact reviewed Tailscale tag and ACL")
+    web_ui = network.get("contenthub_web_ui")
+    if not isinstance(web_ui, dict) or not web_ui.get("enabled") or web_ui.get("external_access") != "tailscale-only":
+        raise BootstrapError("Lucy contenthub_web_ui must be enabled and exposed only via Tailscale")
+    hannah_ssh = network.get("hannah_ssh")
+    if not isinstance(hannah_ssh, dict) or not hannah_ssh.get("enabled") or hannah_ssh.get("user") != "hannah" or hannah_ssh.get("firewall") != "tailscale-only":
+        raise BootstrapError("Lucy hannah_ssh must be enabled for user 'hannah' with tailscale-only firewall")
     account = manifest.get("service_account")
     if account != EXPECTED_ACCOUNT:
         raise BootstrapError("a non-root dedicated service_account is required")
     if manifest.get("watcher_source") != WATCHER_SOURCE:
         raise BootstrapError("watcher source must match the reviewed immutable digest and root-owned mode contract")
-    if manifest.get("secrets") != {"required_names": EXPECTED_SECRET_NAMES, "allowed_scopes": EXPECTED_SECRET_SCOPES}:
+    secrets = manifest.get("secrets")
+    if not isinstance(secrets, dict) or secrets.get("required_names") != EXPECTED_SECRET_NAMES or secrets.get("allowed_scopes") != EXPECTED_SECRET_SCOPES:
         raise BootstrapError("Lucy requires exactly the reviewed Infisical secret names and scopes")
-    names = manifest["secrets"]["required_names"]
+    if secrets.get("hannah_ssh_key_path") != EXPECTED_HANNAH_SSH_KEY_PATH:
+        raise BootstrapError("Lucy hannah_ssh_key_path must match the reviewed Infisical-mounted path")
+    names = secrets["required_names"]
     if not isinstance(names, list) or not all(isinstance(n, str) and SECRET_NAME.fullmatch(n) for n in names):
         raise BootstrapError("secret staging accepts names only (UPPER_SNAKE_CASE), never values")
     serialized = canonical_json(manifest).decode("utf-8")
@@ -188,10 +217,20 @@ def validate_manifest(manifest: dict[str, Any], policy: dict[str, set[str]]) -> 
     if required != {"tailscale_scoped", "local_health", "reboot_survived", "probation_72h"}:
         raise BootstrapError("lifecycle evidence contract is incomplete")
     launchd = manifest.get("launchd", {})
-    if launchd.get("kind") != "daemon" or launchd.get("run_at_load") is not False:
-        raise BootstrapError("stationary services require reviewed LaunchDaemons and may not autostart before health proof")
+    if launchd.get("kind") != "daemon":
+        raise BootstrapError("Lucy services require reviewed LaunchDaemons")
     if launchd.get("labels") != EXPECTED_LABELS:
         raise BootstrapError("launchd labels must match the reviewed Lucy service set")
+    if launchd.get("run_at_load") is not True:
+        raise BootstrapError("Lucy is stationary always-on; LaunchDaemons must run_at_load == true")
+    qmd = manifest.get("qmd")
+    if not isinstance(qmd, dict) or qmd.get("enabled") is not True or qmd.get("scope") != "contenthub-prod-pc" or qmd.get("primary_user") != "hannah":
+        raise BootstrapError("Lucy qmd block must be enabled, scoped to contenthub-prod-pc, with primary_user 'hannah'")
+    if not isinstance(qmd.get("users"), list) or "hannah" not in qmd["users"]:
+        raise BootstrapError("Lucy qmd.users must include 'hannah'")
+    power = manifest.get("power")
+    if not isinstance(power, dict) or power.get("always_on_when_powered") is not True or power.get("caffeinate_required_when_docked") is not False:
+        raise BootstrapError("Lucy power contract must declare always_on_when_powered == true and caffeinate_required_when_docked == false")
 
 
 def launchd_plist(label: str, account: str, command: list[str], run_at_load: bool) -> str:
@@ -239,10 +278,13 @@ def build_plan(manifest: dict[str, Any], root: Path, owner_uid: str | None) -> d
         raise BootstrapError("owner UID is not accepted: Lucy uses a system LaunchDaemon with explicit UserName")
     labels = manifest["launchd"]["labels"]
     wrapper = watcher_loopback_wrapper(manifest["network"]["bind_address"], manifest["network"]["watcher_port"])
-    services = [
-        (labels[0], ["/usr/bin/env", "python3", "/opt/mightyos/libexec/lucy-watcher-loopback.py"]),
-        (labels[1], ["/usr/bin/env", "python3", "-m", "hermes.runtime", "--profile", "lucy"]),
-    ]
+    label_commands = {
+        "com.mightyos.lucy.watcher": ["/usr/bin/env", "python3", "/opt/mightyos/libexec/lucy-watcher-loopback.py"],
+        "com.mightyos.lucy.hermes-bot": ["/usr/bin/env", "python3", "-m", "hermes.runtime", "--profile", "lucy"],
+    }
+    # ContentHub / QMD labels are owned by their own adapters; the planner emits a stub so the
+    # manifest still drags a plist through the adapter pipeline for the operator to wire up.
+    services = [(label, label_commands.get(label, ["/usr/bin/env", "true"])) for label in labels]
     resources = [{
         "path": "opt/mightyos/libexec/lucy-watcher-loopback.py", "mode": "0755", "owner": "root:wheel", "run_as": account,
         "launch_domain": "system", "content": wrapper,
@@ -259,7 +301,7 @@ def build_plan(manifest: dict[str, Any], root: Path, owner_uid: str | None) -> d
         "manifest_sha256": manifest_hash(manifest), "service_account": account,
         "secret_names": manifest["secrets"]["required_names"], "secret_scopes": manifest["secrets"]["allowed_scopes"],
         "modules": manifest["modules"], "resources": [{**resource, "content_sha256": hashlib.sha256(resource["content"].encode()).hexdigest()} for resource in resources],
-        "binding": {"address": manifest["network"]["bind_address"], "port": 8109, "tailscale_acl": "tag:lucy-compute", "tailscale_tag": "tag:lucy-compute"},
+        "binding": {"address": manifest["network"]["bind_address"], "port": 8109, "tailscale_acl": EXPECTED_TAILSCALE_ACL, "tailscale_tag": EXPECTED_TAILSCALE_TAG},
         "watcher_source": manifest["watcher_source"],
         "lifecycle_required_evidence": manifest["lifecycle"]["required_evidence"],
         "hermes_enabled": True,

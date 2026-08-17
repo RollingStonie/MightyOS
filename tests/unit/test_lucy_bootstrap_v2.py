@@ -127,12 +127,12 @@ else:
         self.assertEqual(absent.returncode, 2)
         self.assertEqual(incomplete.returncode, 2)
 
-    def test_launchdaemon_plan_uses_system_domain_dedicated_account_and_no_autostart(self):
+    def test_launchdaemon_plan_uses_system_domain_dedicated_account_and_runs_at_load(self):
         with tempfile.TemporaryDirectory() as raw:
             result = self.run_cli(Path(raw), 'plan')
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn('<key>UserName</key><string>lucy-compute</string>', result.stdout)
-        self.assertIn('<key>RunAtLoad</key><false/>', result.stdout)
+        self.assertIn('<key>UserName</key><string>contenthub-prod</string>', result.stdout)
+        self.assertIn('<key>RunAtLoad</key><true/>', result.stdout)
         self.assertIn('"launch_domain": "system"', result.stdout)
         self.assertIn('"owner": "root:wheel"', result.stdout)
 
@@ -288,21 +288,76 @@ else:
         self.assertTrue(plan['hermes_enabled'])
         self.assertEqual(plan['hermes_profile'], 'lucy')
 
-    def test_contenthub_renders_grant_is_removed_from_lucy_role(self):
+    def test_lucy_role_is_hannah_contenthub_pc_with_new_account_and_tag(self):
         manifest = json.loads(MANIFEST.read_text())
-        self.assertNotIn('contenthub-renders', manifest['required_grants'])
-        self.assertNotIn('contenthub-renders', json.loads(POLICY.read_text())['agents']['lucy']['grants'])
-        self.assertNotIn('contenthub-render-worker', manifest['modules'])
-        self.assertNotIn('contenthub-render-worker', BOOTSTRAP.ALLOWED_MODULES)
+        self.assertEqual(manifest['role'], 'hannah-contenthub-pc')
+        self.assertEqual(manifest['service_account'], 'contenthub-prod')
+        self.assertEqual(manifest['network']['tailscale_tag'], 'tag:contenthub-prod')
+        self.assertEqual(manifest['network']['tailscale_acl'], 'tag:contenthub-prod')
+        self.assertEqual(BOOTSTRAP.EXPECTED_ACCOUNT, 'contenthub-prod')
+        self.assertEqual(BOOTSTRAP.EXPECTED_TAILSCALE_TAG, 'tag:contenthub-prod')
 
-    def test_lucy_dev_workstation_modules_present(self):
+    def test_lucy_required_grants_match_new_role_contract(self):
         manifest = json.loads(MANIFEST.read_text())
-        for module in ('hermes-profile', 'a008-dev-instance', 'git-clone-mirror'):
+        policy = json.loads(POLICY.read_text())
+        expected = {"dev", "repos-mirror", "hermes-dev", "heavy-compute", "nightshift-worker", "content-creator", "contenthub-scanner", "contenthub-render", "backtesting", "trading-research"}
+        self.assertEqual(set(manifest['required_grants']), expected)
+        self.assertEqual(set(BOOTSTRAP.EXPECTED_GRANTS), expected)
+        self.assertEqual(set(policy['agents']['lucy']['grants']), expected)
+        self.assertEqual(set(manifest['denied_grants']), {"crm.write", "email.send", "publish", "trading.execute"})
+
+    def test_lucy_hannah_contenthub_and_qmd_modules_present(self):
+        manifest = json.loads(MANIFEST.read_text())
+        for module in ('hermes-profile', 'a008-dev-instance', 'git-clone-mirror', 'hannah-user-account', 'contenthub-creator', 'contenthub-scanner', 'contenthub-render-worker', 'qmd-runtime'):
             self.assertIn(module, manifest['modules'])
             self.assertIn(module, BOOTSTRAP.ALLOWED_MODULES)
-        self.assertEqual(manifest['role'], 'dev-workstation')
-        self.assertEqual(manifest['launchd']['labels'], ['com.mightyos.lucy.watcher', 'com.mightyos.lucy.hermes-bot'])
-        self.assertIn('hermes-bot', manifest['launchd']['labels'][1])
+        self.assertNotIn('caffeinate-wrapper', manifest['modules'])
+        self.assertIn('caffeinate-wrapper', BOOTSTRAP.FORBIDDEN_MODULES)
+
+    def test_lucy_qmd_block_declares_hannah_as_primary(self):
+        manifest = json.loads(MANIFEST.read_text())
+        qmd = manifest['qmd']
+        self.assertTrue(qmd['enabled'])
+        self.assertEqual(qmd['scope'], 'contenthub-prod-pc')
+        self.assertEqual(qmd['primary_user'], 'hannah')
+        self.assertIn('hannah', qmd['users'])
+        self.assertIn('kenneth', qmd['users'])
+
+    def test_lucy_network_exposes_hannah_ssh_and_contenthub_web_ui_only_via_tailscale(self):
+        network = json.loads(MANIFEST.read_text())['network']
+        ssh = network['hannah_ssh']
+        self.assertTrue(ssh['enabled'])
+        self.assertEqual(ssh['user'], 'hannah')
+        self.assertEqual(ssh['ssh_key_source'], 'infisical')
+        self.assertEqual(ssh['firewall'], 'tailscale-only')
+        web_ui = network['contenthub_web_ui']
+        self.assertTrue(web_ui['enabled'])
+        self.assertEqual(web_ui['external_access'], 'tailscale-only')
+        self.assertEqual(web_ui['auth'], 'plane-or-discord')
+
+    def test_lucy_power_contract_is_always_on_with_no_caffeinate(self):
+        manifest = json.loads(MANIFEST.read_text())
+        power = manifest['power']
+        self.assertTrue(power['always_on_when_powered'])
+        self.assertFalse(power['caffeinate_required_when_docked'])
+        self.assertEqual(manifest['launchd']['run_at_load'], True)
+
+    def test_lucy_launchd_labels_cover_contenthub_and_qmd(self):
+        manifest = json.loads(MANIFEST.read_text())
+        labels = manifest['launchd']['labels']
+        self.assertIn('com.mightyos.lucy.watcher', labels)
+        self.assertIn('com.mightyos.lucy.hermes-bot', labels)
+        self.assertIn('com.mightyos.contenthub.fastapi', labels)
+        self.assertIn('com.mightyos.contenthub.celery-worker', labels)
+        self.assertIn('com.mightyos.contenthub.celery-render-worker', labels)
+        self.assertIn('com.mightyos.qmd.runtime', labels)
+        self.assertEqual(labels, BOOTSTRAP.EXPECTED_LABELS)
+
+    def test_lucy_hannah_ssh_key_path_is_infisical_mounted(self):
+        secrets = json.loads(MANIFEST.read_text())['secrets']
+        self.assertEqual(secrets['hannah_ssh_key_path'], '/hannah/ssh-keys/id_ed25519.pub')
+        self.assertEqual(BOOTSTRAP.EXPECTED_HANNAH_SSH_KEY_PATH, '/hannah/ssh-keys/id_ed25519.pub')
+        self.assertEqual(secrets['allowed_scopes'], ['/lucy/runtime', '/hannah/ssh-keys', '/contenthub/runtime'])
 
 
 if __name__ == '__main__':

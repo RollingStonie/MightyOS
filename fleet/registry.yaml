@@ -111,11 +111,11 @@ lucy:
   discord_identity: lucy-bot            # Kenneth Fleet HQ — Hermes-managed Discord identity (Lucy's own Hermes profile)
   infisical_identity: lucy-runtime     # planned — INFRA-01
   hermes_profile: lucy
-  capabilities: [dev, repos-mirror, hermes-dev, local-llm-endpoint, heavy-compute, trading-research, backtesting, nightshift-worker]
-  grants: [dev, repos-mirror, hermes-dev, local-llm-endpoint, heavy-compute, trading-research, backtesting, nightshift-worker]
-  forbidden: [publish, email.send, crm.write, trading.execute]   # research/compute only until a separately approved trading-execution design exists
+  capabilities: [dev, repos-mirror, hermes-dev, heavy-compute, nightshift-worker, content-creator, contenthub-scanner, contenthub-render, backtesting, trading-research]
+  grants: [dev, repos-mirror, hermes-dev, heavy-compute, nightshift-worker, content-creator, contenthub-scanner, contenthub-render, backtesting, trading-research]
+  forbidden: [publish, email.send, crm.write, trading.execute]   # research/compute + ContentHub production; trading.execute forbidden; trading-research is a grant
   status: planned
-  role: stationary dev workstation; all repos + A008 dev-instance + Hermes; background agent work
+  role: Hannah's primary PC running ContentHub production (creator + scanner + render-worker) inside QMD; stationary always-on; brokers dev + nightshift + backtesting + trading-research for Hannah
 
 luna:
   device: MacBook M5 128GB (planned portable machine)

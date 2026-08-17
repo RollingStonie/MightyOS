@@ -60,10 +60,11 @@ else:
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn('VALID', result.stdout)
 
-    def test_manifest_has_ollama_daemon_module(self):
+    def test_manifest_has_no_ollama_or_contenthub_modules(self):
         manifest = json.loads(MANIFEST.read_text())
-        self.assertIn('ollama-daemon', manifest['modules'])
-        self.assertIn('ollama-daemon', BOOTSTRAP.ALLOWED_MODULES)
+        for dropped in ('ollama-daemon', 'local-llm-endpoint', 'contenthub-creator', 'contenthub-scanner', 'contenthub-render-worker'):
+            self.assertNotIn(dropped, manifest['modules'])
+            self.assertNotIn(dropped, BOOTSTRAP.ALLOWED_MODULES)
 
     def test_manifest_has_caffeinate_wrapper_module(self):
         manifest = json.loads(MANIFEST.read_text())
@@ -91,15 +92,19 @@ else:
         self.assertEqual(manifest['network']['tailscale_tag'], 'tag:luna-portable')
         self.assertEqual(manifest['network']['tailscale_acl'], 'tag:luna-portable')
 
-    def test_launchd_has_ollama_label(self):
+    def test_launchd_has_no_ollama_label(self):
         manifest = json.loads(MANIFEST.read_text())
-        self.assertIn('com.mightyos.luna.ollama', manifest['launchd']['labels'])
+        self.assertNotIn('com.mightyos.luna.ollama', manifest['launchd']['labels'])
+        self.assertIn('com.mightyos.luna.watcher', manifest['launchd']['labels'])
+        self.assertIn('com.mightyos.luna.hermes-bot', manifest['launchd']['labels'])
 
     def test_power_caffeinate_required_when_docked(self):
         manifest = json.loads(MANIFEST.read_text())
         self.assertTrue(manifest['power']['caffeinate_required_when_docked'])
+        self.assertFalse(manifest['power']['always_on_when_powered'])
         caffeinate_args = manifest['power']['caffeinate_args']
         self.assertIn('-d', caffeinate_args)
+        self.assertIn('-i', caffeinate_args)
         self.assertIn('-u', caffeinate_args)
 
     def test_wrapper_script_path_matches(self):
@@ -202,7 +207,7 @@ else:
         self.assertIn('super().__init__(_expected', wrapper)
         self.assertIn('/opt/mightyos/libexec/luna-watcher-loopback.py', watcher)
 
-    def test_caffeinate_wrapper_plans_d_and_u_args(self):
+    def test_caffeinate_wrapper_plans_d_i_and_u_args(self):
         with tempfile.TemporaryDirectory() as raw:
             result = self.run_cli(Path(raw), 'plan')
             plan = json.loads(result.stdout)
@@ -210,6 +215,7 @@ else:
         caffeinate = next(item['content'] for item in plan['resources'] if item['path'].endswith('luna-caffeinate.sh'))
         self.assertIn('caffeinate', caffeinate)
         self.assertIn('-d', caffeinate)
+        self.assertIn('-i', caffeinate)
         self.assertIn('-u', caffeinate)
 
     def test_watcher_wrapper_executes_import_setup_without_opening_listener(self):
@@ -349,14 +355,19 @@ else:
         self.assertTrue(plan['hermes_enabled'])
         self.assertEqual(plan['hermes_profile'], 'luna')
 
-    def test_luna_content_end_to_end_modules_present(self):
+    def test_luna_hermes_portable_dev_modules_present(self):
         manifest = json.loads(MANIFEST.read_text())
-        for module in ('ollama-daemon', 'caffeinate-wrapper', 'contenthub-creator', 'contenthub-scanner', 'contenthub-render-worker', 'hermes-profile'):
+        for module in ('tailscale-node', 'a008-watcher', 'git-clone-mirror', 'a008-dev-instance', 'caffeinate-wrapper', 'hermes-profile', 'trading-research', 'background-worker'):
             self.assertIn(module, manifest['modules'])
             self.assertIn(module, BOOTSTRAP.ALLOWED_MODULES)
-        self.assertEqual(manifest['role'], 'content-end-to-end-worker')
-        self.assertIn('com.mightyos.luna.ollama', manifest['launchd']['labels'])
+        self.assertEqual(manifest['role'], 'hermes-portable-dev')
+        self.assertNotIn('com.mightyos.luna.ollama', manifest['launchd']['labels'])
+        self.assertEqual(manifest['launchd']['labels'], BOOTSTRAP.EXPECTED_LABELS)
         self.assertTrue(manifest['launchd']['run_at_load'])
+        for dropped_grant in ('content-creator', 'contenthub-creator', 'contenthub-render', 'contenthub-scanner', 'local-llm-endpoint'):
+            self.assertNotIn(dropped_grant, manifest['required_grants'])
+        for kept_grant in ('dev', 'repos-mirror', 'hermes-personal', 'trading-research', 'nightshift-worker', 'heavy-compute', 'portable-dev'):
+            self.assertIn(kept_grant, manifest['required_grants'])
 
 
 if __name__ == '__main__':

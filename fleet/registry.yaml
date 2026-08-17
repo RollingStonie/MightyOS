@@ -125,11 +125,11 @@ luna:
   discord_identity: luna-bot            # Kenneth Fleet HQ — Hermes-managed Discord identity (Luna's own Hermes profile)
   infisical_identity: luna-runtime      # planned — provision only during approved onboarding
   hermes_profile: luna
-  capabilities: [content-creator, contenthub-scanner, contenthub-render, contenthub-creator, heavy-compute, hermes-personal, local-llm-endpoint, trading-research, nightshift-worker]
-  grants: [content-creator, contenthub-scanner, contenthub-render, contenthub-creator, heavy-compute, hermes-personal, local-llm-endpoint, trading-research, nightshift-worker]
+  capabilities: [dev, repos-mirror, hermes-personal, heavy-compute, trading-research, nightshift-worker, portable-dev]
+  grants: [dev, repos-mirror, hermes-personal, heavy-compute, trading-research, nightshift-worker, portable-dev]
   forbidden: [publish, email.send, crm.write, trading.execute]   # trading.execute forbidden; trading-research is a grant; details deferred
   status: planned
-  role: portable ContentHub end-to-end worker (creator + scanner + render); Hermes; content/AI agent; trading-research (deferred details)
+  role: portable Hermes+dev worker (repos mirror + A008 dev-instance + Hermes profile); sleeps on battery; trading-research (deferred details)
   expected_daily_output: on demand when docked on power
 
 ashley:

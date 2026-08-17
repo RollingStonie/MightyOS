@@ -32,16 +32,15 @@ DEFAULT_MANIFEST = ROOT / "fleet/bootstrap/manifests/luna.json"
 DEFAULT_REGISTRY = ROOT / "fleet/registry.yaml"
 DEFAULT_POLICY = ROOT / "fleet/bootstrap/v2/registry-policy.json"
 ALLOWED_MODULES = {
-    "tailscale-node", "a008-watcher", "local-llm-endpoint", "ollama-daemon",
-    "contenthub-creator", "contenthub-scanner", "contenthub-render-worker",
+    "tailscale-node", "a008-watcher", "git-clone-mirror", "a008-dev-instance",
     "background-worker", "caffeinate-wrapper", "hermes-profile", "trading-research",
 }
 FORBIDDEN_MODULES = {"messaging", "discord-bot", "slack-bot", "trading-execute"}
 FORBIDDEN_GRANTS = {"trading.execute", "publish", "email.send", "crm.write"}
 SECRET_NAME = re.compile(r"^[A-Z][A-Z0-9_]{2,127}$")
 EXPECTED_ACCOUNT = "luna-compute"
-EXPECTED_LABELS = ["com.mightyos.luna.watcher", "com.mightyos.luna.hermes-bot", "com.mightyos.luna.ollama"]
-EXPECTED_GRANTS = {"content-creator", "contenthub-creator", "contenthub-render", "contenthub-scanner", "heavy-compute", "hermes-personal", "local-llm-endpoint", "nightshift-worker", "trading-research"}
+EXPECTED_LABELS = ["com.mightyos.luna.watcher", "com.mightyos.luna.hermes-bot"]
+EXPECTED_GRANTS = {"dev", "heavy-compute", "hermes-personal", "nightshift-worker", "portable-dev", "repos-mirror", "trading-research"}
 EXPECTED_DENIALS = {"crm.write", "email.send", "publish", "trading.execute"}
 EXPECTED_SECRET_NAMES = ["INFISICAL_MACHINE_IDENTITY_TOKEN", "DISCORD_BOT_TOKEN_LUNA"]
 EXPECTED_SECRET_SCOPES = ["/luna/runtime", "Fleet Core/prod/luna"]
@@ -195,18 +194,18 @@ def validate_manifest(manifest: dict[str, Any], policy: dict[str, set[str]]) -> 
         raise BootstrapError("Luna services require reviewed LaunchDaemons")
     if launchd.get("labels") != EXPECTED_LABELS:
         raise BootstrapError("launchd labels must match the reviewed Luna service set")
-    if "com.mightyos.luna.ollama" not in launchd.get("labels", []):
-        raise BootstrapError("Luna launchd must include the ollama daemon label")
     if "com.mightyos.luna.hermes-bot" not in launchd.get("labels", []):
         raise BootstrapError("Luna launchd must include the hermes-bot label")
     power = manifest.get("power")
     if not isinstance(power, dict) or power.get("caffeinate_required_when_docked") is not True:
         raise BootstrapError("Luna power contract must declare caffeinate_required_when_docked == true")
+    if power.get("always_on_when_powered") is not False:
+        raise BootstrapError("Luna power contract must declare always_on_when_powered == false (portable, sleeps on battery)")
     caffeinate_args = power.get("caffeinate_args")
     if not isinstance(caffeinate_args, list) or not all(isinstance(arg, str) for arg in caffeinate_args):
         raise BootstrapError("Luna power.caffeinate_args must be a list of strings")
-    if "-d" not in caffeinate_args or "-u" not in caffeinate_args:
-        raise BootstrapError("Luna caffeinate_args must include both -d (system display) and -u (user activity) flags")
+    if not {"-d", "-i", "-u"} <= set(caffeinate_args):
+        raise BootstrapError("Luna caffeinate_args must include -d (display), -i (idle-sleep prevention), and -u (user activity) flags")
 
 
 def launchd_plist(label: str, account: str, command: list[str], run_at_load: bool) -> str:
@@ -266,7 +265,6 @@ def build_plan(manifest: dict[str, Any], root: Path, owner_uid: str | None) -> d
     services = [
         (labels[0], ["/usr/bin/env", "python3", "/opt/mightyos/libexec/luna-watcher-loopback.py"]),
         (labels[1], ["/usr/bin/env", "python3", "-m", "hermes.runtime", "--profile", "luna"]),
-        (labels[2], ["/usr/bin/env", "bash", "/opt/mightyos/libexec/luna-caffeinate.sh", "--", "/usr/bin/env", "ollama", "serve"]),
     ]
     resources = [{
         "path": "opt/mightyos/libexec/luna-watcher-loopback.py", "mode": "0755", "owner": "root:wheel", "run_as": account,
@@ -292,7 +290,7 @@ def build_plan(manifest: dict[str, Any], root: Path, owner_uid: str | None) -> d
         "lifecycle_required_evidence": manifest["lifecycle"]["required_evidence"],
         "hermes_enabled": True,
         "hermes_profile": EXPECTED_HERMES_PROFILE,
-        "power": {"caffeinate_required_when_docked": True, "caffeinate_args": manifest["power"]["caffeinate_args"]},
+        "power": {"always_on_when_powered": manifest["power"]["always_on_when_powered"], "caffeinate_required_when_docked": True, "caffeinate_args": manifest["power"]["caffeinate_args"]},
     }
 
 

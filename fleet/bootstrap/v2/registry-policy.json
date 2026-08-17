@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "source": "fleet/registry.yaml",
-  "source_sha256": "9a26cdcfa460054a7ce6d8b9b6763e53c1995458f543ee33922d75ca41d4bf34",
+  "source_sha256": "cc833a37a1ac91abf38c03ca67ffaad89d85a7321f8c121caf3bf55412439426",
   "agents": {
     "lucy": {
       "discord_identity": "lucy-bot",
@@ -11,7 +11,7 @@
     },
     "luna": {
       "discord_identity": "luna-bot",
-      "grants": ["content-creator", "contenthub-creator", "contenthub-render", "contenthub-scanner", "heavy-compute", "hermes-personal", "local-llm-endpoint", "nightshift-worker", "trading-research"],
+      "grants": ["dev", "heavy-compute", "hermes-personal", "nightshift-worker", "portable-dev", "repos-mirror", "trading-research"],
       "forbidden": ["crm.write", "email.send", "publish", "trading.execute"],
       "approved_adapters": []
     }

@@ -24,16 +24,18 @@ DEFAULT_MANIFEST = ROOT / "fleet/bootstrap/manifests/lucy.json"
 DEFAULT_REGISTRY = ROOT / "fleet/registry.yaml"
 DEFAULT_POLICY = ROOT / "fleet/bootstrap/v2/registry-policy.json"
 ALLOWED_MODULES = {
-    "tailscale-node", "a008-watcher", "local-llm-endpoint",
-    "contenthub-render-worker", "background-worker", "trading-research",
+    "tailscale-node", "a008-watcher", "background-worker", "trading-research",
+    "hermes-profile", "git-clone-mirror", "a008-dev-instance",
 }
-FORBIDDEN_MODULES = {"messaging", "discord-bot", "slack-bot", "trading-execute", "hermes-worker"}
-FORBIDDEN_GRANTS = {"trading.execute", "publish", "email.send", "crm.write", "messaging"}
+FORBIDDEN_MODULES = {"messaging", "discord-bot", "slack-bot", "trading-execute"}
+FORBIDDEN_GRANTS = {"trading.execute", "publish", "email.send", "crm.write"}
 SECRET_NAME = re.compile(r"^[A-Z][A-Z0-9_]{2,127}$")
 EXPECTED_ACCOUNT = "lucy-compute"
-EXPECTED_LABELS = ["com.mightyos.lucy.watcher", "com.mightyos.lucy.render-worker"]
-EXPECTED_GRANTS = {"backtesting", "contenthub-renders", "heavy-compute", "local-llm-endpoint", "nightshift-worker", "trading-research"}
+EXPECTED_LABELS = ["com.mightyos.lucy.watcher", "com.mightyos.lucy.hermes-bot"]
+EXPECTED_GRANTS = {"backtesting", "dev", "heavy-compute", "hermes-dev", "local-llm-endpoint", "nightshift-worker", "repos-mirror", "trading-research"}
 EXPECTED_DENIALS = {"crm.write", "email.send", "publish", "trading.execute"}
+EXPECTED_SECRET_NAMES = ["INFISICAL_MACHINE_IDENTITY_TOKEN", "DISCORD_BOT_TOKEN_LUCY"]
+EXPECTED_SECRET_SCOPES = ["/lucy/runtime", "Fleet Core/prod/lucy"]
 WATCHER_SOURCE = {"path": "opt/mightyos/a008/tools/watcher/agent_watcher.py", "sha256": "eb9c2b7a18eec0f066eddb2c0e3104243dd80af084b20c5e8e98748b573f5339", "mode": "0644", "owner": "root:wheel"}
 
 
@@ -59,38 +61,64 @@ def load_json(path: Path) -> dict[str, Any]:
     return value
 
 
-def registry_lucy_policy(path: Path) -> dict[str, set[str]]:
-    """Read only Lucy's simple YAML lists; keep this tool standard-library-only."""
+def registry_agent_policy(path: Path, agent: str) -> dict[str, set[str]]:
+    """Read one agent's simple YAML lists (grants, forbidden) from the registry.
+
+    Kept stdlib-only so the planner can run without third-party YAML parsers. Only the
+    requested agent's block is captured; callers MUST know the canonical name.
+    """
     try:
         text = path.read_text()
     except OSError as error:
         raise BootstrapError(f"cannot read registry: {error}") from error
-    match = re.search(r"(?ms)^lucy:\n(?P<body>.*?)(?=^[A-Za-z0-9_-]+:\n|\Z)", text)
+    match = re.search(rf"(?ms)^{re.escape(agent)}:\n(?P<body>.*?)(?=^[A-Za-z0-9_-]+:\n|\Z)", text)
     if not match:
-        raise BootstrapError("Lucy is missing from fleet registry")
+        raise BootstrapError(f"{agent} is missing from fleet registry")
     body = match.group("body")
     def listed(name: str) -> set[str]:
         found = re.search(rf"(?m)^\s*{re.escape(name)}:\s*\[([^\]]*)\]", body)
         if not found:
-            raise BootstrapError(f"Lucy registry lacks {name}")
+            raise BootstrapError(f"{agent} registry lacks {name}")
         return {item.strip().strip("'\"") for item in found.group(1).split(",") if item.strip()}
     return {"grants": listed("grants"), "forbidden": listed("forbidden")}
 
 
-def validate_policy_projection(registry: Path, policy_path: Path, registry_policy: dict[str, set[str]]) -> dict[str, Any]:
+def registry_lucy_policy(path: Path) -> dict[str, set[str]]:
+    """Backward-compatible alias for Lucy registry read."""
+    return registry_agent_policy(path, "lucy")
+
+
+def _extract_agent_block(policy: dict[str, Any], agent: str) -> dict[str, Any]:
+    agents = policy.get("agents")
+    if not isinstance(agents, dict) or agent not in agents:
+        raise BootstrapError(f"policy projection must contain an {agent} block under 'agents'")
+    block = agents[agent]
+    if not isinstance(block, dict):
+        raise BootstrapError(f"policy projection {agent} block must be an object")
+    return block
+
+
+def validate_policy_projection(registry: Path, policy_path: Path, registry_policy: dict[str, set[str]], agent: str = "lucy") -> dict[str, Any]:
     policy = load_json(policy_path)
     source_hash = hashlib.sha256(registry.read_bytes()).hexdigest()
     if policy.get("source") != "fleet/registry.yaml" or policy.get("source_sha256") != source_hash:
         raise BootstrapError("registry policy projection is stale; regenerate and review it before use")
-    if policy.get("agent") != "lucy" or policy.get("discord_identity", "not-null") is not None:
-        raise BootstrapError("policy projection must keep Lucy without a messaging identity")
+    block = _extract_agent_block(policy, agent)
+    if agent == "lucy":
+        if block.get("discord_identity") != "lucy-bot":
+            raise BootstrapError("Lucy policy projection must keep the lucy-bot Hermes-managed Discord identity")
+    elif agent == "luna":
+        if block.get("discord_identity") != "luna-bot":
+            raise BootstrapError("Luna policy projection must keep the luna-bot Hermes-managed Discord identity")
+    else:
+        raise BootstrapError(f"unknown agent in policy projection: {agent}")
     for key in ("grants", "forbidden"):
-        if set(policy.get(key, [])) != registry_policy[key]:
-            raise BootstrapError(f"registry policy projection parity failure for {key}")
+        if set(block.get(key, [])) != registry_policy[key]:
+            raise BootstrapError(f"registry policy projection parity failure for {agent}.{key}")
     if registry_policy["grants"] != EXPECTED_GRANTS or registry_policy["forbidden"] != EXPECTED_DENIALS:
-        raise BootstrapError("Lucy registry grants and denials must exactly match the reviewed role policy")
-    if not isinstance(policy.get("approved_adapters"), list):
-        raise BootstrapError("policy must declare an approved_adapters allowlist")
+        raise BootstrapError(f"{agent} registry grants and denials must exactly match the reviewed role policy")
+    if not isinstance(block.get("approved_adapters"), list):
+        raise BootstrapError("policy agent block must declare an approved_adapters allowlist")
     return policy
 
 
@@ -134,8 +162,8 @@ def validate_manifest(manifest: dict[str, Any], policy: dict[str, set[str]]) -> 
         raise BootstrapError("a non-root dedicated service_account is required")
     if manifest.get("watcher_source") != WATCHER_SOURCE:
         raise BootstrapError("watcher source must match the reviewed immutable digest and root-owned mode contract")
-    if manifest.get("secrets") != {"required_names": ["INFISICAL_MACHINE_IDENTITY_TOKEN"], "allowed_scopes": ["/lucy/runtime"]}:
-        raise BootstrapError("Lucy requires exactly the reviewed Infisical secret name and scope")
+    if manifest.get("secrets") != {"required_names": EXPECTED_SECRET_NAMES, "allowed_scopes": EXPECTED_SECRET_SCOPES}:
+        raise BootstrapError("Lucy requires exactly the reviewed Infisical secret names and scopes")
     names = manifest["secrets"]["required_names"]
     if not isinstance(names, list) or not all(isinstance(n, str) and SECRET_NAME.fullmatch(n) for n in names):
         raise BootstrapError("secret staging accepts names only (UPPER_SNAKE_CASE), never values")
@@ -143,8 +171,16 @@ def validate_manifest(manifest: dict[str, Any], policy: dict[str, set[str]]) -> 
     if re.search(r"(?i)(sk-[a-z0-9]|token[=:][^\"]|password[=:][^\"]|authkey[=:][^\"])", serialized):
         raise BootstrapError("manifest appears to contain a credential value")
     hermes = manifest.get("hermes")
-    if not isinstance(hermes, dict) or hermes.get("enabled") is not False:
-        raise BootstrapError("Hermes is optional and must be explicitly disabled for Lucy v2")
+    if not isinstance(hermes, dict) or hermes.get("enabled") is not True:
+        raise BootstrapError("Hermes is now required for Lucy v2 and must be explicitly enabled")
+    if hermes.get("profile_name") != "lucy":
+        raise BootstrapError("Lucy must declare hermes profile_name == 'lucy'")
+    if hermes.get("surface") != "discord":
+        raise BootstrapError("Lucy Hermes surface must be 'discord'")
+    if not isinstance(hermes.get("channel"), str) or not hermes["channel"].startswith("#"):
+        raise BootstrapError("Lucy Hermes channel must be a #channel string")
+    if "hermes-profile" not in set(modules):
+        raise BootstrapError("Lucy manifest must include the hermes-profile module when Hermes is enabled")
     lifecycle = manifest.get("lifecycle", {})
     if lifecycle.get("promotion_path") != ["registered", "provisioned", "probation", "ready"]:
         raise BootstrapError("lifecycle promotion path must be registered → provisioned → probation → ready")
@@ -205,7 +241,7 @@ def build_plan(manifest: dict[str, Any], root: Path, owner_uid: str | None) -> d
     wrapper = watcher_loopback_wrapper(manifest["network"]["bind_address"], manifest["network"]["watcher_port"])
     services = [
         (labels[0], ["/usr/bin/env", "python3", "/opt/mightyos/libexec/lucy-watcher-loopback.py"]),
-        (labels[1], ["/usr/bin/env", "python3", "-m", "contenthub.render_worker"]),
+        (labels[1], ["/usr/bin/env", "python3", "-m", "hermes.runtime", "--profile", "lucy"]),
     ]
     resources = [{
         "path": "opt/mightyos/libexec/lucy-watcher-loopback.py", "mode": "0755", "owner": "root:wheel", "run_as": account,
@@ -226,7 +262,8 @@ def build_plan(manifest: dict[str, Any], root: Path, owner_uid: str | None) -> d
         "binding": {"address": manifest["network"]["bind_address"], "port": 8109, "tailscale_acl": "tag:lucy-compute", "tailscale_tag": "tag:lucy-compute"},
         "watcher_source": manifest["watcher_source"],
         "lifecycle_required_evidence": manifest["lifecycle"]["required_evidence"],
-        "hermes_enabled": False,
+        "hermes_enabled": True,
+        "hermes_profile": "lucy",
     }
 
 
@@ -348,9 +385,10 @@ def run_adapter(adapter: Path, operation: str, plan: dict[str, Any], root: Path)
         raise BootstrapError("runtime adapter attestation does not match the approved plan")
 
 
-def approved_adapter(policy: dict[str, Any], adapter: Path) -> None:
+def approved_adapter(policy: dict[str, Any], adapter: Path, agent: str = "lucy") -> None:
     digest = hashlib.sha256(adapter.read_bytes()).hexdigest()
-    for item in policy["approved_adapters"]:
+    block = _extract_agent_block(policy, agent)
+    for item in block.get("approved_adapters", []):
         if isinstance(item, dict) and item.get("id") == adapter.name and isinstance(item.get("version"), str) and item.get("sha256") == digest:
             return
     raise BootstrapError("runtime adapter is not allowlisted with an approved version and digest")

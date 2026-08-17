@@ -1,10 +1,10 @@
 {
   "schema_version": 2,
   "agent": "lucy",
-  "role": "stationary-compute-worker",
+  "role": "dev-workstation",
   "service_account": "lucy-compute",
   "watcher_source": {"path": "opt/mightyos/a008/tools/watcher/agent_watcher.py", "sha256": "eb9c2b7a18eec0f066eddb2c0e3104243dd80af084b20c5e8e98748b573f5339", "mode": "0644", "owner": "root:wheel"},
-  "required_grants": ["backtesting", "contenthub-renders", "heavy-compute", "local-llm-endpoint", "nightshift-worker", "trading-research"],
+  "required_grants": ["backtesting", "dev", "heavy-compute", "hermes-dev", "local-llm-endpoint", "nightshift-worker", "repos-mirror", "trading-research"],
   "denied_grants": ["crm.write", "email.send", "publish", "trading.execute"],
   "lifecycle": {
     "initial": "registered",
@@ -14,8 +14,9 @@
   "modules": [
     "tailscale-node",
     "a008-watcher",
-    "local-llm-endpoint",
-    "contenthub-render-worker",
+    "a008-dev-instance",
+    "git-clone-mirror",
+    "hermes-profile",
     "background-worker",
     "trading-research"
   ],
@@ -26,13 +27,13 @@
     "tailscale_tag": "tag:lucy-compute"
   },
   "secrets": {
-    "required_names": ["INFISICAL_MACHINE_IDENTITY_TOKEN"],
-    "allowed_scopes": ["/lucy/runtime"]
+    "required_names": ["INFISICAL_MACHINE_IDENTITY_TOKEN", "DISCORD_BOT_TOKEN_LUCY"],
+    "allowed_scopes": ["/lucy/runtime", "Fleet Core/prod/lucy"]
   },
-  "hermes": {"enabled": false},
+  "hermes": {"enabled": true, "profile_name": "lucy", "surface": "discord", "channel": "#agent-lucy"},
   "launchd": {
     "kind": "daemon",
-    "labels": ["com.mightyos.lucy.watcher", "com.mightyos.lucy.render-worker"],
+    "labels": ["com.mightyos.lucy.watcher", "com.mightyos.lucy.hermes-bot"],
     "run_at_load": false
   }
 }

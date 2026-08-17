@@ -24,7 +24,7 @@ class LucyBootstrapV2Tests(unittest.TestCase):
         if '--approved-runtime-adapter' in args:
             adapter = Path(args[args.index('--approved-runtime-adapter') + 1])
             policy = json.loads(POLICY.read_text())
-            policy['approved_adapters'] = [{'id': adapter.name, 'version': 'test-v1', 'sha256': __import__('hashlib').sha256(adapter.read_bytes()).hexdigest()}]
+            policy['agents']['lucy']['approved_adapters'] = [{'id': adapter.name, 'version': 'test-v1', 'sha256': __import__('hashlib').sha256(adapter.read_bytes()).hexdigest()}]
             path = root.parent / 'approved-policy.json'; path.parent.mkdir(parents=True, exist_ok=True); path.write_text(json.dumps(policy))
             command[command.index('--policy') + 1] = str(path)
         return subprocess.run(command, text=True, capture_output=True, env={**os.environ, 'LUCY_BOOTSTRAP_TEST_FAKE_ROOT': '1'})
@@ -271,6 +271,38 @@ else:
                 return type('S', (), {'st_uid': 0, 'st_gid': 0, 'st_mode': 0o40775})()
             with self.assertRaisesRegex(BOOTSTRAP.BootstrapError, 'parent path'):
                 BOOTSTRAP.verify_watcher_source(plan, root, stat_fn=writable_parent)
+
+    def test_hermes_is_now_enabled_and_policy_projects_lucy_bot_identity(self):
+        manifest = json.loads(MANIFEST.read_text())
+        self.assertTrue(manifest['hermes']['enabled'])
+        self.assertEqual(manifest['hermes']['profile_name'], 'lucy')
+        self.assertEqual(manifest['hermes']['surface'], 'discord')
+        self.assertTrue(manifest['hermes']['channel'].startswith('#'))
+        self.assertIn('hermes-profile', manifest['modules'])
+        policy = json.loads(POLICY.read_text())
+        self.assertEqual(policy['agents']['lucy']['discord_identity'], 'lucy-bot')
+        with tempfile.TemporaryDirectory() as raw:
+            result = self.run_cli(Path(raw), 'plan')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        plan = json.loads(result.stdout)
+        self.assertTrue(plan['hermes_enabled'])
+        self.assertEqual(plan['hermes_profile'], 'lucy')
+
+    def test_contenthub_renders_grant_is_removed_from_lucy_role(self):
+        manifest = json.loads(MANIFEST.read_text())
+        self.assertNotIn('contenthub-renders', manifest['required_grants'])
+        self.assertNotIn('contenthub-renders', json.loads(POLICY.read_text())['agents']['lucy']['grants'])
+        self.assertNotIn('contenthub-render-worker', manifest['modules'])
+        self.assertNotIn('contenthub-render-worker', BOOTSTRAP.ALLOWED_MODULES)
+
+    def test_lucy_dev_workstation_modules_present(self):
+        manifest = json.loads(MANIFEST.read_text())
+        for module in ('hermes-profile', 'a008-dev-instance', 'git-clone-mirror'):
+            self.assertIn(module, manifest['modules'])
+            self.assertIn(module, BOOTSTRAP.ALLOWED_MODULES)
+        self.assertEqual(manifest['role'], 'dev-workstation')
+        self.assertEqual(manifest['launchd']['labels'], ['com.mightyos.lucy.watcher', 'com.mightyos.lucy.hermes-bot'])
+        self.assertIn('hermes-bot', manifest['launchd']['labels'][1])
 
 
 if __name__ == '__main__':

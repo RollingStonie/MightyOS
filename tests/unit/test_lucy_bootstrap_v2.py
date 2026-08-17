@@ -375,6 +375,46 @@ else:
         self.assertIn('hannah', qmd['users'])
         self.assertIn('kenneth', qmd['users'])
 
+    def test_lucy_qmd_execution_mode_documents_headless_launchdaemon_decision(self):
+        """Open Q1 (adversarial review): qmd runs as the contenthub-prod LaunchDaemon,
+        not a per-user LaunchAgent. The manifest must pin this decision and the reason
+        so future adapter writes cannot silently flip QMD to a GUI/keychain tool.
+        """
+        qmd = json.loads(MANIFEST.read_text())['qmd']
+        self.assertEqual(qmd['qmd_execution_mode'], 'launchdaemon-as-contenthub-prod')
+        self.assertIsInstance(qmd['qmd_execution_reason'], str)
+        self.assertTrue(qmd['qmd_execution_reason'].strip(), 'qmd_execution_reason must be non-empty to document Open Q1')
+        # 'users' stays as the auth/access roster, not session identity.
+        self.assertEqual(set(qmd['users']), {'hannah', 'kenneth'})
+        self.assertEqual(qmd['primary_user'], 'hannah')
+
+    def test_lucy_validate_rejects_qmd_execution_mode_outside_documented_set(self):
+        """An undocumented qmd_execution_mode must break the planner so the decision
+        cannot drift to a value the team did not review (e.g. raw 'launchagent'
+        without a per-user label, or an unknown mode invented by a future adapter).
+        """
+        with tempfile.TemporaryDirectory() as raw:
+            bad = json.loads(MANIFEST.read_text())
+            bad['qmd']['qmd_execution_mode'] = 'launchagent-as-hannah'
+            path = Path(raw) / 'bad-mode.json'; path.write_text(json.dumps(bad))
+            result = subprocess.run(['python3', str(CLI), 'validate', '--manifest', str(path), '--registry', str(REGISTRY), '--policy', str(POLICY)], text=True, capture_output=True)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn('qmd_execution_mode', result.stderr)
+
+    def test_lucy_validate_requires_reason_when_qmd_execution_mode_is_undecided(self):
+        """'undecided' is temporarily accepted so a future adapter author can flip
+        the mode without a new schema bump, but only if they also document the
+        unresolved QMD runtime requirements in qmd_execution_reason.
+        """
+        with tempfile.TemporaryDirectory() as raw:
+            bad = json.loads(MANIFEST.read_text())
+            bad['qmd']['qmd_execution_mode'] = 'undecided'
+            bad['qmd'].pop('qmd_execution_reason', None)
+            path = Path(raw) / 'undecided.json'; path.write_text(json.dumps(bad))
+            result = subprocess.run(['python3', str(CLI), 'validate', '--manifest', str(path), '--registry', str(REGISTRY), '--policy', str(POLICY)], text=True, capture_output=True)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn('qmd_execution_reason', result.stderr)
+
     def test_lucy_network_exposes_hannah_ssh_and_contenthub_web_ui_only_via_tailscale(self):
         network = json.loads(MANIFEST.read_text())['network']
         ssh = network['hannah_ssh']

@@ -246,6 +246,12 @@ def validate_manifest(manifest: dict[str, Any], policy: dict[str, set[str]]) -> 
         raise BootstrapError("Lucy qmd block must be enabled, scoped to contenthub-prod-pc, with primary_user 'hannah'")
     if not isinstance(qmd.get("users"), list) or "hannah" not in qmd["users"]:
         raise BootstrapError("Lucy qmd.users must include 'hannah'")
+    qmd_modes = {"launchdaemon-as-contenthub-prod", "launchagent", "undecided"}
+    qmd_mode = qmd.get("qmd_execution_mode")
+    if qmd_mode not in qmd_modes:
+        raise BootstrapError(f"Lucy qmd.qmd_execution_mode must be one of {sorted(qmd_modes)} (Open Q1 resolution); got {qmd_mode!r}")
+    if qmd_mode == "undecided" and qmd.get("qmd_execution_reason") is None:
+        raise BootstrapError("Lucy qmd.qmd_execution_reason must be set when qmd_execution_mode is 'undecided'")
     power = manifest.get("power")
     if not isinstance(power, dict) or power.get("always_on_when_powered") is not True or power.get("caffeinate_required_when_docked") is not False:
         raise BootstrapError("Lucy power contract must declare always_on_when_powered == true and caffeinate_required_when_docked == false")

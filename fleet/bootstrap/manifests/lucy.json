@@ -73,6 +73,8 @@
     "scope": "contenthub-prod-pc",
     "users": ["hannah", "kenneth"],
     "primary_user": "hannah",
+    "qmd_execution_mode": "launchdaemon-as-contenthub-prod",
+    "qmd_execution_reason": "QMD is a shared headless queue runtime colocated on the always-on ContentHub PC, not a per-user GUI/keychain tool. The launchd label com.mightyos.qmd.runtime is therefore a system LaunchDaemon belonging to the contenthub-prod service account (matching the ContentHub FastAPI / Celery worker LaunchDaemons), not a per-user LaunchAgent. The 'users' list is the auth/access roster for the qmd scope (who may touch the machine), not the session identity QMD runs under — Hannah is the primary operator and Kenneth has admin access, but neither needs a desktop session for QMD to be running.",
     "notes": "Lucy is the shared ContentHub PC inside QMD. Hannah is the primary operator; Kenneth has admin access."
   },
   "power": {

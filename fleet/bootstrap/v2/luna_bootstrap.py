@@ -397,6 +397,60 @@ def verify_runtime_watcher_source(plan: dict[str, Any], root: Path) -> None:
     verify_watcher_source(plan, root, enforce_owner=not fake_root)
 
 
+def _is_launchdaemon_path(path: Path) -> bool:
+    parts = path.parts
+    if "Library" not in parts or "LaunchDaemons" not in parts:
+        return False
+    return parts.index("LaunchDaemons") == parts.index("Library") + 1
+
+
+def verify_launchdaemon_ownership(path: Path, *, stat_fn=os.stat, enforce_owner: bool = True) -> None:
+    """Reject LaunchDaemon files that are not owned by root:wheel.
+
+    macOS refuses to load a LaunchDaemon whose owning UID/GID are not 0/0, even when the
+    file content and mode are correct. Apply and idempotency checks must inspect ownership
+    so a misconfigured adapter cannot report success while the daemon silently fails to
+    load. Ownership checks apply only to /Library/LaunchDaemons/*; libexec helpers and
+    the watcher source have their own ownership contracts.
+
+    ``enforce_owner=False`` mirrors the ``verify_watcher_source`` test-only escape hatch:
+    when the unittest harness sets ``LUNA_BOOTSTRAP_TEST_FAKE_ROOT=1`` against a temp
+    directory the calling process cannot chown to root:wheel, so the check is relaxed.
+    Production runs always see ``enforce_owner=True``.
+    """
+    if not _is_launchdaemon_path(path):
+        return
+    if not enforce_owner:
+        return
+    stat = stat_fn(path)
+    if stat.st_uid != 0 or stat.st_gid != 0:
+        raise BootstrapError(
+            f"LaunchDaemon file {path} must be owned by root:wheel (uid=0,gid=0); got uid={stat.st_uid}, gid={stat.st_gid}"
+        )
+
+
+def _resource_filesystem_facts(root: Path, plan: dict[str, Any]) -> None:
+    """Validate every managed resource: existence, hash, mode, and (LaunchDaemon) ownership.
+
+    Centralised so post-apply, idempotency, and health checks all use the same fail-closed
+    rules. LaunchDaemon ownership is enforced for every managed file under Library/LaunchDaemons;
+    libexec helpers and the watcher source have their own contracts. Ownership enforcement
+    is relaxed under the same ``LUNA_BOOTSTRAP_TEST_FAKE_ROOT`` escape hatch that the
+    watcher-source verifier honours, so the unit-test fake adapter can run without root.
+    """
+    resolved = root.resolve()
+    fake_root = os.environ.get("LUNA_BOOTSTRAP_TEST_FAKE_ROOT") == "1" and resolved.is_relative_to(Path(tempfile.gettempdir()).resolve())
+    for resource in plan["resources"]:
+        path = root / resource["path"]
+        if not path.is_file():
+            raise BootstrapError(f"managed resource missing on disk: {path}")
+        if hashlib.sha256(path.read_bytes()).hexdigest() != resource["content_sha256"]:
+            raise BootstrapError(f"managed resource content drifted: {path}")
+        if format(path.stat().st_mode & 0o777, "04o") != resource["mode"]:
+            raise BootstrapError(f"managed resource mode drifted: {path}")
+        verify_launchdaemon_ownership(path, enforce_owner=not fake_root)
+
+
 def write_receipt_atomically(root: Path, plan: dict[str, Any], adapter: Path) -> Path:
     directory = state_dir(root)
     directory.mkdir(parents=True, exist_ok=True)
@@ -476,18 +530,20 @@ def command_apply(args: argparse.Namespace) -> int:
     if receipt and receipt.get("status") == "applied" and receipt.get("manifest_sha256") == plan["manifest_sha256"]:
         validate_receipt(receipt, plan, args.root)
         verify_runtime_watcher_source(plan, args.root)
-        drift = [r["path"] for r in plan["resources"] if not (args.root / r["path"]).is_file() or hashlib.sha256((args.root / r["path"]).read_bytes()).hexdigest() != r["content_sha256"] or format((args.root / r["path"]).stat().st_mode & 0o777, "04o") != r["mode"]]
-        if drift:
-            raise BootstrapError(f"idempotency denied: receipt resources drifted: {drift}")
+        try:
+            _resource_filesystem_facts(args.root, plan)
+        except BootstrapError as error:
+            raise BootstrapError(f"idempotency denied: receipt resources drifted: {error}") from error
         print("ALREADY_APPLIED: matching receipt exists; no mutation requested")
         return 0
     run_adapter(args.approved_runtime_adapter, "preflight", plan, args.root)
     verify_runtime_watcher_source(plan, args.root)
     assert_managed(plan, receipt, args.root)
     run_adapter(args.approved_runtime_adapter, "apply", plan, args.root)
-    missing = [r["path"] for r in plan["resources"] if not (args.root / r["path"]).is_file() or hashlib.sha256((args.root / r["path"]).read_bytes()).hexdigest() != r["content_sha256"] or format((args.root / r["path"]).stat().st_mode & 0o777, "04o") != r["mode"]]
-    if missing:
-        raise BootstrapError(f"adapter did not create planned resources: {missing}")
+    try:
+        _resource_filesystem_facts(args.root, plan)
+    except BootstrapError as error:
+        raise BootstrapError(f"adapter did not create planned resources: {error}") from error
     print(f"APPLIED: receipt={write_receipt_atomically(args.root, plan, args.approved_runtime_adapter)}")
     return 0
 
@@ -506,9 +562,10 @@ def command_health(args: argparse.Namespace) -> int:
     verify_runtime_watcher_source(plan, args.root)
     if receipt.get("binding") != plan["binding"] or receipt.get("resources") != [{key: r[key] for key in ("path", "content_sha256", "mode", "owner", "launch_domain", "run_as")} for r in plan["resources"]]:
         raise BootstrapError("health denied: receipt resource facts do not match the approved plan")
-    missing = [r["path"] for r in plan["resources"] if not (args.root / r["path"]).is_file() or hashlib.sha256((args.root / r["path"]).read_bytes()).hexdigest() != r["content_sha256"] or format((args.root / r["path"]).stat().st_mode & 0o777, "04o") != r["mode"]]
-    if missing:
-        raise BootstrapError(f"health failed: missing managed resources {missing}")
+    try:
+        _resource_filesystem_facts(args.root, plan)
+    except BootstrapError as error:
+        raise BootstrapError(f"health failed: missing managed resources: {error}") from error
     evidence = load_json(args.evidence)
     if evidence.get("manifest_sha256") != receipt["manifest_sha256"]:
         raise BootstrapError("health denied: lifecycle evidence is not bound to the applied manifest")

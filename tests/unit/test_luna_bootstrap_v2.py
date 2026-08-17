@@ -33,17 +33,22 @@ class LunaBootstrapV2Tests(unittest.TestCase):
         adapter = directory / "fake-mutator.py"
         payload = WATCHER_SOURCE.read_bytes().hex()
         adapter.write_text("""#!/usr/bin/env python3
-import json, pathlib, sys
+import json, os, pathlib, sys
 operation, plan_path, root = sys.argv[1:]
 plan = json.loads(pathlib.Path(plan_path).read_text())
 root = pathlib.Path(root)
 source = root / plan['watcher_source']['path']
+def _try_chown(p):
+    try:
+        os.chown(p, 0, 0)
+    except (PermissionError, OSError):
+        pass
 if operation == 'preflight':
-    source.parent.mkdir(parents=True, exist_ok=True); source.write_bytes(bytes.fromhex('""" + payload + """')); source.chmod(int(plan['watcher_source']['mode'], 8))
+    source.parent.mkdir(parents=True, exist_ok=True); source.write_bytes(bytes.fromhex('""" + payload + """')); source.chmod(int(plan['watcher_source']['mode'], 8)); _try_chown(source)
 for resource in plan['resources']:
     path = root / resource['path']
     if operation == 'apply':
-        path.parent.mkdir(parents=True, exist_ok=True); path.write_text(resource.get('content', 'managed')); path.chmod(int(resource['mode'], 8))
+        path.parent.mkdir(parents=True, exist_ok=True); path.write_text(resource.get('content', 'managed')); path.chmod(int(resource['mode'], 8)); _try_chown(path)
     elif operation in {'rollback', 'offboard'}:
         path.unlink(missing_ok=True)
 if operation == 'apply' or operation == 'preflight':
@@ -406,6 +411,105 @@ else:
         # Grants tracked against canonical A008 registry/fleet-agents.yaml Luna block.
         for kept_grant in ('hermes-profile', 'portable-dev', 'coding-worker', 'git-clone-mirror', 'a008-dev-instance', 'trading-research'):
             self.assertIn(kept_grant, manifest['required_grants'])
+
+    def test_luna_verify_launchdaemon_ownership_passes_when_root_owned(self):
+        """Critical #3: a LaunchDaemon file owned by uid=0, gid=0 must pass."""
+        plist = Path('/Library/LaunchDaemons/com.example.label.plist')
+        self.assertTrue(BOOTSTRAP._is_launchdaemon_path(plist))
+        def root_owned(path):
+            return type('S', (), {'st_uid': 0, 'st_gid': 0, 'st_mode': 0o100644})()
+        BOOTSTRAP.verify_launchdaemon_ownership(plist, stat_fn=root_owned)
+
+    def test_luna_verify_launchdaemon_ownership_fails_on_wrong_uid(self):
+        """Critical #3: a LaunchDaemon file with uid=501 (invoking user) must be rejected."""
+        plist = Path('/Library/LaunchDaemons/com.example.label.plist')
+        def invoking_user(path):
+            return type('S', (), {'st_uid': 501, 'st_gid': 0, 'st_mode': 0o100644})()
+        with self.assertRaisesRegex(BOOTSTRAP.BootstrapError, 'root:wheel'):
+            BOOTSTRAP.verify_launchdaemon_ownership(plist, stat_fn=invoking_user)
+
+    def test_luna_verify_launchdaemon_ownership_fails_on_wrong_gid(self):
+        """Critical #3: a LaunchDaemon file with gid=20 (wrong group) must be rejected."""
+        plist = Path('/Library/LaunchDaemons/com.example.label.plist')
+        def wrong_group(path):
+            return type('S', (), {'st_uid': 0, 'st_gid': 20, 'st_mode': 0o100644})()
+        with self.assertRaisesRegex(BOOTSTRAP.BootstrapError, 'root:wheel'):
+            BOOTSTRAP.verify_launchdaemon_ownership(plist, stat_fn=wrong_group)
+
+    def test_luna_verify_launchdaemon_ownership_ignores_non_launchdaemon_paths(self):
+        """Non-LaunchDaemon paths (libexec helpers, caffeinate wrapper) must not be root-enforced."""
+        libexec = Path('/opt/mightyos/libexec/luna-watcher-loopback.py')
+        self.assertFalse(BOOTSTRAP._is_launchdaemon_path(libexec))
+        def invoking_user(path):
+            return type('S', (), {'st_uid': 501, 'st_gid': 20, 'st_mode': 0o100755})()
+        BOOTSTRAP.verify_launchdaemon_ownership(libexec, stat_fn=invoking_user)
+
+    def test_luna_resource_filesystem_facts_rejects_wrong_ownership(self):
+        """Critical #3: the post-apply/idempotency checker must reject wrong LaunchDaemon ownership."""
+        import hashlib as _hashlib
+        plist_path = Path('Library/LaunchDaemons/com.mightyos.luna.watcher.plist')
+        plan_resource = {'path': str(plist_path), 'mode': '0644', 'content': 'managed', 'content_sha256': _hashlib.sha256(b'managed').hexdigest()}
+        plan = {'resources': [plan_resource]}
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            target = root / plist_path
+            target.parent.mkdir(parents=True)
+            target.write_bytes(b'managed')
+            target.chmod(0o644)
+            real_chown = BOOTSTRAP.verify_launchdaemon_ownership
+            try:
+                BOOTSTRAP.verify_launchdaemon_ownership = lambda path, **kwargs: real_chown(path, stat_fn=lambda _p: type('S', (), {'st_uid': 501, 'st_gid': 0, 'st_mode': 0o100644})(), enforce_owner=True)
+                with self.assertRaisesRegex(BOOTSTRAP.BootstrapError, 'root:wheel'):
+                    BOOTSTRAP._resource_filesystem_facts(root, plan)
+            finally:
+                BOOTSTRAP.verify_launchdaemon_ownership = real_chown
+
+    def test_luna_resource_filesystem_facts_passes_when_root_owned(self):
+        """Critical #3: when LaunchDaemon ownership is root:wheel, the post-apply check passes."""
+        import hashlib as _hashlib
+        plist_path = Path('Library/LaunchDaemons/com.mightyos.luna.watcher.plist')
+        plan_resource = {'path': str(plist_path), 'mode': '0644', 'content': 'managed', 'content_sha256': _hashlib.sha256(b'managed').hexdigest()}
+        plan = {'resources': [plan_resource]}
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            target = root / plist_path
+            target.parent.mkdir(parents=True)
+            target.write_bytes(b'managed')
+            target.chmod(0o644)
+            real_chown = BOOTSTRAP.verify_launchdaemon_ownership
+            try:
+                BOOTSTRAP.verify_launchdaemon_ownership = lambda path, **kwargs: real_chown(path, stat_fn=lambda _p: type('S', (), {'st_uid': 0, 'st_gid': 0, 'st_mode': 0o100644})(), enforce_owner=True)
+                BOOTSTRAP._resource_filesystem_facts(root, plan)  # must not raise
+            finally:
+                BOOTSTRAP.verify_launchdaemon_ownership = real_chown
+
+    def test_luna_idempotency_denies_when_launchdaemon_ownership_drifts(self):
+        """Critical #3: the idempotency checker (``_resource_filesystem_facts``) must
+        reject LaunchDaemon ownership drift so a re-apply cannot silently pass when an
+        out-of-band change replaces a root-owned plist with a user-owned one.
+
+        The same function backs post-apply, idempotency, and health checks; exercising it
+        directly proves the idempotency path without racing the watcher-source ownership
+        check (which fires first in the CLI and would mask this specific drift).
+        """
+        import hashlib as _hashlib
+        plist_path = Path('Library/LaunchDaemons/com.mightyos.luna.watcher.plist')
+        plan_resource = {'path': str(plist_path), 'mode': '0644', 'content': 'managed', 'content_sha256': _hashlib.sha256(b'managed').hexdigest()}
+        plan = {'resources': [plan_resource]}
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw) / 'fake-root'
+            root.mkdir()
+            target = root / plist_path
+            target.parent.mkdir(parents=True)
+            target.write_bytes(b'managed')
+            target.chmod(0o644)
+            real_chown = BOOTSTRAP.verify_launchdaemon_ownership
+            try:
+                BOOTSTRAP.verify_launchdaemon_ownership = lambda path, **kwargs: real_chown(path, stat_fn=lambda _p: type('S', (), {'st_uid': 501, 'st_gid': 0, 'st_mode': 0o100644})(), enforce_owner=True)
+                with self.assertRaisesRegex(BOOTSTRAP.BootstrapError, 'root:wheel'):
+                    BOOTSTRAP._resource_filesystem_facts(root, plan)
+            finally:
+                BOOTSTRAP.verify_launchdaemon_ownership = real_chown
 
 
 if __name__ == '__main__':

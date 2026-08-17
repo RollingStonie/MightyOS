@@ -108,27 +108,29 @@ lucy:
   tailscale_ip: TBD
   tailscale: lucy.tailnet
   state: registered
-  discord_identity: null               # compute host does not earn a bot identity by default
+  discord_identity: lucy-bot            # Kenneth Fleet HQ — Hermes-managed Discord identity (Lucy's own Hermes profile)
   infisical_identity: lucy-runtime     # planned — INFRA-01
-  capabilities: [local-llm-endpoint, contenthub-renders, heavy-compute, trading-research, backtesting, nightshift-worker]
-  grants: [local-llm-endpoint, contenthub-renders, heavy-compute, trading-research, backtesting, nightshift-worker]
+  hermes_profile: lucy
+  capabilities: [dev, repos-mirror, hermes-dev, local-llm-endpoint, heavy-compute, trading-research, backtesting, nightshift-worker]
+  grants: [dev, repos-mirror, hermes-dev, local-llm-endpoint, heavy-compute, trading-research, backtesting, nightshift-worker]
   forbidden: [publish, email.send, crm.write, trading.execute]   # research/compute only until a separately approved trading-execution design exists
   status: planned
-  role: stationary always-on compute anchor; ContentHub rendering; trading research/backtesting; background agent work
+  role: stationary dev workstation; all repos + A008 dev-instance + Hermes; background agent work
 
 luna:
   device: MacBook M5 128GB (planned portable machine)
   tailscale_ip: TBD
   tailscale: luna.tailnet
   state: registered
-  discord_identity: null               # portable machine does not earn a bot identity by default
+  discord_identity: luna-bot            # Kenneth Fleet HQ — Hermes-managed Discord identity (Luna's own Hermes profile)
   infisical_identity: luna-runtime      # planned — provision only during approved onboarding
-  capabilities: [portable-dev, local-llm-endpoint, coding-worker, client-demos]
-  grants: [dev, portable-dev, local-llm-endpoint, coding-worker]
-  forbidden: [publish, email.send, crm.write, trading.execute]
+  hermes_profile: luna
+  capabilities: [content-creator, contenthub-scanner, contenthub-render, contenthub-creator, heavy-compute, hermes-personal, local-llm-endpoint, trading-research, nightshift-worker]
+  grants: [content-creator, contenthub-scanner, contenthub-render, contenthub-creator, heavy-compute, hermes-personal, local-llm-endpoint, trading-research, nightshift-worker]
+  forbidden: [publish, email.send, crm.write, trading.execute]   # trading.execute forbidden; trading-research is a grant; details deferred
   status: planned
-  role: Kenneth portable development/reasoning machine; on-demand coding worker
-  expected_daily_output: on demand
+  role: portable ContentHub end-to-end worker (creator + scanner + render); Hermes; content/AI agent; trading-research (deferred details)
+  expected_daily_output: on demand when docked on power
 
 ashley:
   device: vps-profile                  # Hermes profile on mighty's Hostinger KVM2 VPS (2vCPU / 8GB RAM) — not a separate box

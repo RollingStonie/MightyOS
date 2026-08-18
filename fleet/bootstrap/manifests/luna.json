@@ -19,7 +19,9 @@
     "background-worker",
     "caffeinate-wrapper",
     "hermes-profile",
-    "trading-research"
+    "trading-research",
+    "ollama-qwen3.8",
+    "meshcentral-agent"
   ],
   "network": {
     "watcher_port": 8109,
@@ -29,12 +31,12 @@
   },
   "secrets": {
     "required_names": ["INFISICAL_MACHINE_IDENTITY_TOKEN", "DISCORD_BOT_TOKEN_LUNA"],
-    "allowed_scopes": ["/luna/runtime", "Fleet Core/prod/luna"]
+    "allowed_scopes": ["/luna/runtime", "Fleet Core/prod/luna", "/luna-runtime/meshcentral-server-url", "/luna-runtime/meshcentral-cert-hash"]
   },
   "hermes": {"enabled": true, "profile_name": "luna", "surface": "discord", "channel": "#agent-luna"},
   "launchd": {
     "kind": "daemon",
-    "labels": ["com.mightyos.luna.watcher", "com.mightyos.luna.hermes-bot", "com.mightyos.luna.caffeinate"],
+    "labels": ["com.mightyos.luna.watcher", "com.mightyos.luna.hermes-bot", "com.mightyos.luna.caffeinate", "com.mightyos.luna.ollama", "com.mightyos.luna.meshcentral-agent"],
     "run_at_load": false,
     "caffeinate_label": "com.mightyos.luna.caffeinate",
     "caffeinate_policy": "RunAtLoad=false; caffeinate -d -i -u is enforced by the Luna caffeinate wrapper only when AC power is detected via pmset; on battery the wrapper exits 0 so macOS can sleep."

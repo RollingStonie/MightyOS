@@ -50,17 +50,24 @@ DEFAULT_POLICY = ROOT / "fleet/bootstrap/v2/registry-policy.json"
 ALLOWED_MODULES = {
     "tailscale-node", "a008-watcher", "git-clone-mirror", "a008-dev-instance",
     "background-worker", "caffeinate-wrapper", "hermes-profile", "trading-research",
+    "ollama-qwen3.8", "meshcentral-agent",
 }
 FORBIDDEN_MODULES = {"messaging", "discord-bot", "slack-bot", "trading-execute"}
 FORBIDDEN_GRANTS = {"trading.execute", "publish", "email.send", "crm.write"}
 SECRET_NAME = re.compile(r"^[A-Z][A-Z0-9_]{2,127}$")
 EXPECTED_ACCOUNT = "luna-compute"
-EXPECTED_LABELS = ["com.mightyos.luna.watcher", "com.mightyos.luna.hermes-bot", "com.mightyos.luna.caffeinate"]
+EXPECTED_LABELS = ["com.mightyos.luna.watcher", "com.mightyos.luna.hermes-bot", "com.mightyos.luna.caffeinate", "com.mightyos.luna.ollama", "com.mightyos.luna.meshcentral-agent"]
+PLANNER_OWNED_LABELS = {
+    "com.mightyos.luna.watcher",
+    "com.mightyos.luna.hermes-bot",
+    "com.mightyos.luna.ollama",
+    "com.mightyos.luna.meshcentral-agent",
+}
 EXPECTED_CAFFEINATE_LABEL = "com.mightyos.luna.caffeinate"
 EXPECTED_GRANTS = {"hermes-profile", "portable-dev", "coding-worker", "git-clone-mirror", "a008-dev-instance", "trading-research"}
 EXPECTED_DENIALS = {"publish", "email.send", "crm.write", "trading.execute", "ollama-daemon", "contenthub-render", "always-on-power"}
 EXPECTED_SECRET_NAMES = ["INFISICAL_MACHINE_IDENTITY_TOKEN", "DISCORD_BOT_TOKEN_LUNA"]
-EXPECTED_SECRET_SCOPES = ["/luna/runtime", "Fleet Core/prod/luna"]
+EXPECTED_SECRET_SCOPES = ["/luna/runtime", "Fleet Core/prod/luna", "/luna-runtime/meshcentral-server-url", "/luna-runtime/meshcentral-cert-hash"]
 EXPECTED_TAILSCALE_TAG = "tag:luna-portable"
 EXPECTED_TAILSCALE_ACL = "tag:luna-portable"
 EXPECTED_HERMES_PROFILE = "luna"
@@ -306,6 +313,17 @@ def build_plan(manifest: dict[str, Any], root: Path, owner_uid: str | None) -> d
         (labels[0], ["/usr/bin/env", "python3", "/opt/mightyos/libexec/luna-watcher-loopback.py"]),
         (labels[1], ["/usr/bin/env", "python3", "-m", "hermes.runtime", "--profile", "luna"]),
         (caffeinate_label, ["/opt/mightyos/libexec/luna-caffeinate.sh"]),
+        # Ollama serves the local qwen3.8 model for ContentHub heavy-compute / authoring flows.
+        # Program path is the canonical Homebrew install; the runtime adapter is responsible for
+        # confirming the binary exists on the target host before bootstrapping.
+        ("com.mightyos.luna.ollama", ["/opt/homebrew/bin/ollama", "serve"]),
+        # MeshCentral agent connects the box to the fleet MeshCentral server. Server URL and
+        # cert-hash come from Infisical at runtime; the bootstrap manifest only declares the
+        # scope allowlist, never the values.
+        ("com.mightyos.luna.meshcentral-agent", [
+            "/usr/bin/env", "sh", "-c",
+            '/usr/bin/env INFISICAL_MESH_URL="$INFISICAL_MESH_URL" INFISICAL_MESH_HASH="$INFISICAL_MESH_HASH" exec /opt/mightyos/libexec/meshagent --server-url="$INFISICAL_MESH_URL" --cert-hash="$INFISICAL_MESH_HASH"',
+        ]),
     ]
     resources = [{
         "path": "opt/mightyos/libexec/luna-watcher-loopback.py", "mode": "0755", "owner": "root:wheel", "run_as": account,

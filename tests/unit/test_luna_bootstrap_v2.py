@@ -97,9 +97,10 @@ else:
         self.assertEqual(manifest['network']['tailscale_tag'], 'tag:luna-portable')
         self.assertEqual(manifest['network']['tailscale_acl'], 'tag:luna-portable')
 
-    def test_launchd_has_no_ollama_label(self):
+    def test_launchd_includes_ollama_and_meshcentral_agent_labels(self):
         manifest = json.loads(MANIFEST.read_text())
-        self.assertNotIn('com.mightyos.luna.ollama', manifest['launchd']['labels'])
+        self.assertIn('com.mightyos.luna.ollama', manifest['launchd']['labels'])
+        self.assertIn('com.mightyos.luna.meshcentral-agent', manifest['launchd']['labels'])
         self.assertIn('com.mightyos.luna.watcher', manifest['launchd']['labels'])
         self.assertIn('com.mightyos.luna.hermes-bot', manifest['launchd']['labels'])
 
@@ -488,7 +489,8 @@ else:
             self.assertIn(module, manifest['modules'])
             self.assertIn(module, BOOTSTRAP.ALLOWED_MODULES)
         self.assertEqual(manifest['role'], 'hermes-portable-dev')
-        self.assertNotIn('com.mightyos.luna.ollama', manifest['launchd']['labels'])
+        self.assertIn('com.mightyos.luna.ollama', manifest['launchd']['labels'])
+        self.assertIn('com.mightyos.luna.meshcentral-agent', manifest['launchd']['labels'])
         self.assertEqual(manifest['launchd']['labels'], BOOTSTRAP.EXPECTED_LABELS)
         # Luna is a portable-dev profile — services do NOT auto-start at load.
         # The caffeinate wrapper additionally requires AC/UPS power before invoking
@@ -600,6 +602,49 @@ else:
                     BOOTSTRAP._resource_filesystem_facts(root, plan)
             finally:
                 BOOTSTRAP.verify_launchdaemon_ownership = real_chown
+
+    def test_luna_modules_include_ollama_qwen3_and_meshcentral(self):
+        """The new Luna modules (mirroring Lucy) must be in both the manifest and the planner allowlist."""
+        manifest = json.loads(MANIFEST.read_text())
+        for module in ('ollama-qwen3.8', 'meshcentral-agent'):
+            self.assertIn(module, manifest['modules'])
+            self.assertIn(module, BOOTSTRAP.ALLOWED_MODULES)
+        # Luna secret scopes must allow the MeshCentral URL + cert-hash (mirrors Lucy).
+        self.assertIn('/luna-runtime/meshcentral-server-url', manifest['secrets']['allowed_scopes'])
+        self.assertIn('/luna-runtime/meshcentral-cert-hash', manifest['secrets']['allowed_scopes'])
+        self.assertIn('/luna-runtime/meshcentral-server-url', BOOTSTRAP.EXPECTED_SECRET_SCOPES)
+        self.assertIn('/luna-runtime/meshcentral-cert-hash', BOOTSTRAP.EXPECTED_SECRET_SCOPES)
+
+    def test_luna_ollama_plist_is_generated(self):
+        """The Ollama LaunchDaemon plist is generated and runs not-at-load (Luna is portable)."""
+        with tempfile.TemporaryDirectory() as raw:
+            plan = json.loads(self.run_cli(Path(raw), 'plan').stdout)
+        ollama_plists = [item for item in plan['resources']
+                         if item['path'] == 'Library/LaunchDaemons/com.mightyos.luna.ollama.plist']
+        self.assertEqual(len(ollama_plists), 1, "expected exactly one ollama plist")
+        plist = ollama_plists[0]['content']
+        self.assertIn('<string>com.mightyos.luna.ollama</string>', plist)
+        # Ollama is invoked through the canonical Homebrew path, mirroring Lucy's command.
+        self.assertIn('<string>/opt/homebrew/bin/ollama</string>', plist)
+        self.assertIn('<string>serve</string>', plist)
+        # Luna is portable — RunAtLoad must stay false for the Ollama daemon.
+        self.assertRegex(plist, r'<key>RunAtLoad</key>\s*<false/>')
+
+    def test_luna_meshcentral_agent_plist_with_runatload_false(self):
+        """The MeshCentral agent LaunchDaemon plist is generated, RunAtLoad=false, and reads Infisical env vars."""
+        with tempfile.TemporaryDirectory() as raw:
+            plan = json.loads(self.run_cli(Path(raw), 'plan').stdout)
+        mesh_plists = [item for item in plan['resources']
+                       if item['path'] == 'Library/LaunchDaemons/com.mightyos.luna.meshcentral-agent.plist']
+        self.assertEqual(len(mesh_plists), 1, "expected exactly one meshcentral-agent plist")
+        plist = mesh_plists[0]['content']
+        self.assertIn('<string>com.mightyos.luna.meshcentral-agent</string>', plist)
+        # Mirror Lucy's meshagent invocation pattern.
+        self.assertIn('/opt/mightyos/libexec/meshagent', plist)
+        self.assertIn('--server-url="$INFISICAL_MESH_URL"', plist)
+        self.assertIn('--cert-hash="$INFISICAL_MESH_HASH"', plist)
+        # Portable Luna: daemon must not auto-start at boot.
+        self.assertRegex(plist, r'<key>RunAtLoad</key>\s*<false/>')
 
 
 if __name__ == '__main__':

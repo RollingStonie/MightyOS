@@ -70,7 +70,7 @@ ADAPTER_REQUIRED_SENTINEL_PREFIX = "ADAPTER REQUIRED"
 EXPECTED_GRANTS = {
     "contenthub-creator", "contenthub-scanner", "contenthub-render-worker",
     "qmd-runtime", "hermes-profile", "a008-dev-instance", "hannah-ssh-access",
-    "heavy-compute",
+    "heavy-compute", "ollama-qwen3.8", "meshcentral-agent",
 }
 EXPECTED_DENIALS = {"publish", "email.send", "crm.write", "trading.execute", "portable-sleep-mode", "caffeinate-wrapper"}
 EXPECTED_SECRET_NAMES = ["INFISICAL_MACHINE_IDENTITY_TOKEN", "DISCORD_BOT_TOKEN_LUCY"]

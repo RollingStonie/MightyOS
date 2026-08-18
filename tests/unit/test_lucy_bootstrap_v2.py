@@ -352,7 +352,7 @@ else:
         # Canonical A008 grants for Lucy (registry/fleet-agents.yaml). The bootstrap
         # planner hardcodes the same set in EXPECTED_GRANTS so a future registry edit
         # without a planner update must be caught by parity validation.
-        expected = {"contenthub-creator", "contenthub-scanner", "contenthub-render-worker", "qmd-runtime", "hermes-profile", "a008-dev-instance", "hannah-ssh-access", "heavy-compute"}
+        expected = {"contenthub-creator", "contenthub-scanner", "contenthub-render-worker", "qmd-runtime", "hermes-profile", "a008-dev-instance", "hannah-ssh-access", "heavy-compute", "meshcentral-agent", "ollama-qwen3.8"}
         self.assertEqual(set(manifest['required_grants']), expected)
         self.assertEqual(set(BOOTSTRAP.EXPECTED_GRANTS), expected)
         self.assertEqual(set(policy['agents']['lucy']['grants']), expected)

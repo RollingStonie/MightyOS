@@ -3,13 +3,46 @@
   "agent": "lucy",
   "role": "hannah-contenthub-pc",
   "service_account": "contenthub-prod",
-  "watcher_source": {"path": "opt/mightyos/a008/tools/watcher/agent_watcher.py", "sha256": "eb9c2b7a18eec0f066eddb2c0e3104243dd80af084b20c5e8e98748b573f5339", "mode": "0644", "owner": "root:wheel"},
-  "required_grants": ["contenthub-creator", "contenthub-scanner", "contenthub-render-worker", "qmd-runtime", "hermes-profile", "a008-dev-instance", "hannah-ssh-access", "heavy-compute"],
-  "denied_grants": ["publish", "email.send", "crm.write", "trading.execute", "portable-sleep-mode", "caffeinate-wrapper"],
+  "watcher_source": {
+    "path": "opt/mightyos/a008/tools/watcher/agent_watcher.py",
+    "sha256": "eb9c2b7a18eec0f066eddb2c0e3104243dd80af084b20c5e8e98748b573f5339",
+    "mode": "0644",
+    "owner": "root:wheel"
+  },
+  "required_grants": [
+    "a008-dev-instance",
+    "contenthub-creator",
+    "contenthub-render-worker",
+    "contenthub-scanner",
+    "hannah-ssh-access",
+    "heavy-compute",
+    "hermes-profile",
+    "meshcentral-agent",
+    "ollama-qwen3.8",
+    "qmd-runtime"
+  ],
+  "denied_grants": [
+    "caffeinate-wrapper",
+    "crm.write",
+    "email.send",
+    "portable-sleep-mode",
+    "publish",
+    "trading.execute"
+  ],
   "lifecycle": {
     "initial": "registered",
-    "promotion_path": ["registered", "provisioned", "probation", "ready"],
-    "required_evidence": ["tailscale_scoped", "local_health", "reboot_survived", "probation_72h"]
+    "promotion_path": [
+      "registered",
+      "provisioned",
+      "probation",
+      "ready"
+    ],
+    "required_evidence": [
+      "tailscale_scoped",
+      "local_health",
+      "reboot_survived",
+      "probation_72h"
+    ]
   },
   "modules": [
     "tailscale-node",
@@ -47,11 +80,25 @@
     }
   },
   "secrets": {
-    "required_names": ["INFISICAL_MACHINE_IDENTITY_TOKEN", "DISCORD_BOT_TOKEN_LUCY"],
-    "allowed_scopes": ["/lucy/runtime", "/hannah/ssh-keys", "/contenthub/runtime", "/lucy-runtime/meshcentral-server-url", "/lucy-runtime/meshcentral-cert-hash"],
+    "required_names": [
+      "INFISICAL_MACHINE_IDENTITY_TOKEN",
+      "DISCORD_BOT_TOKEN_LUCY"
+    ],
+    "allowed_scopes": [
+      "/lucy/runtime",
+      "/hannah/ssh-keys",
+      "/contenthub/runtime",
+      "/lucy-runtime/meshcentral-server-url",
+      "/lucy-runtime/meshcentral-cert-hash"
+    ],
     "hannah_ssh_key_path": "/hannah/ssh-keys/id_ed25519.pub"
   },
-  "hermes": {"enabled": true, "profile_name": "lucy", "surface": "discord", "channel": "#agent-lucy"},
+  "hermes": {
+    "enabled": true,
+    "profile_name": "lucy",
+    "surface": "discord",
+    "channel": "#agent-lucy"
+  },
   "launchd": {
     "kind": "daemon",
     "labels": [
@@ -75,10 +122,13 @@
   "qmd": {
     "enabled": true,
     "scope": "contenthub-prod-pc",
-    "users": ["hannah", "kenneth"],
+    "users": [
+      "hannah",
+      "kenneth"
+    ],
     "primary_user": "hannah",
     "qmd_execution_mode": "launchdaemon-as-contenthub-prod",
-    "qmd_execution_reason": "QMD is a shared headless queue runtime colocated on the always-on ContentHub PC, not a per-user GUI/keychain tool. The launchd label com.mightyos.qmd.runtime is therefore a system LaunchDaemon belonging to the contenthub-prod service account (matching the ContentHub FastAPI / Celery worker LaunchDaemons), not a per-user LaunchAgent. The 'users' list is the auth/access roster for the qmd scope (who may touch the machine), not the session identity QMD runs under — Hannah is the primary operator and Kenneth has admin access, but neither needs a desktop session for QMD to be running.",
+    "qmd_execution_reason": "QMD is a shared headless queue runtime colocated on the always-on ContentHub PC, not a per-user GUI/keychain tool. The launchd label com.mightyos.qmd.runtime is therefore a system LaunchDaemon belonging to the contenthub-prod service account (matching the ContentHub FastAPI / Celery worker LaunchDaemons), not a per-user LaunchAgent. The 'users' list is the auth/access roster for the qmd scope (who may touch the machine), not the session identity QMD runs under \u2014 Hannah is the primary operator and Kenneth has admin access, but neither needs a desktop session for QMD to be running.",
     "notes": "Lucy is the shared ContentHub PC inside QMD. Hannah is the primary operator; Kenneth has admin access."
   },
   "power": {

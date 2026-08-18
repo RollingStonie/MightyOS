@@ -64,8 +64,8 @@ PLANNER_OWNED_LABELS = {
     "com.mightyos.luna.meshcentral-agent",
 }
 EXPECTED_CAFFEINATE_LABEL = "com.mightyos.luna.caffeinate"
-EXPECTED_GRANTS = {"hermes-profile", "portable-dev", "coding-worker", "git-clone-mirror", "a008-dev-instance", "trading-research"}
-EXPECTED_DENIALS = {"publish", "email.send", "crm.write", "trading.execute", "ollama-daemon", "contenthub-render", "always-on-power"}
+EXPECTED_GRANTS = {"hermes-profile", "portable-dev", "coding-worker", "git-clone-mirror", "a008-dev-instance", "trading-research", "ollama-qwen3.8", "meshcentral-agent"}
+EXPECTED_DENIALS = {"publish", "email.send", "crm.write", "trading.execute", "contenthub-render", "always-on-power"}
 EXPECTED_SECRET_NAMES = ["INFISICAL_MACHINE_IDENTITY_TOKEN", "DISCORD_BOT_TOKEN_LUNA"]
 EXPECTED_SECRET_SCOPES = ["/luna/runtime", "Fleet Core/prod/luna", "/luna-runtime/meshcentral-server-url", "/luna-runtime/meshcentral-cert-hash"]
 EXPECTED_TAILSCALE_TAG = "tag:luna-portable"

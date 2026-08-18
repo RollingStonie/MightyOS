@@ -13,6 +13,8 @@
         "hermes-profile",
         "a008-dev-instance",
         "hannah-ssh-access",
+        "ollama-qwen3.8",
+        "meshcentral-agent",
         "heavy-compute"
       ],
       "forbidden": [
@@ -33,6 +35,8 @@
         "coding-worker",
         "git-clone-mirror",
         "a008-dev-instance",
+        "ollama-qwen3.8",
+        "meshcentral-agent",
         "trading-research"
       ],
       "forbidden": [
@@ -40,7 +44,6 @@
         "email.send",
         "crm.write",
         "trading.execute",
-        "ollama-daemon",
         "contenthub-render",
         "always-on-power"
       ],

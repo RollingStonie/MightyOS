@@ -356,7 +356,7 @@ else:
         self.assertEqual(set(manifest['required_grants']), expected)
         self.assertEqual(set(BOOTSTRAP.EXPECTED_GRANTS), expected)
         self.assertEqual(set(policy['agents']['lucy']['grants']), expected)
-        self.assertEqual(set(manifest['denied_grants']), {"publish", "email.send", "crm.write", "trading.execute", "ollama-daemon", "portable-sleep-mode", "caffeinate-wrapper"})
+        self.assertEqual(set(manifest['denied_grants']), {"publish", "email.send", "crm.write", "trading.execute", "portable-sleep-mode", "caffeinate-wrapper"})
 
     def test_lucy_hannah_contenthub_and_qmd_modules_present(self):
         manifest = json.loads(MANIFEST.read_text())
@@ -449,7 +449,7 @@ else:
         secrets = json.loads(MANIFEST.read_text())['secrets']
         self.assertEqual(secrets['hannah_ssh_key_path'], '/hannah/ssh-keys/id_ed25519.pub')
         self.assertEqual(BOOTSTRAP.EXPECTED_HANNAH_SSH_KEY_PATH, '/hannah/ssh-keys/id_ed25519.pub')
-        self.assertEqual(secrets['allowed_scopes'], ['/lucy/runtime', '/hannah/ssh-keys', '/contenthub/runtime'])
+        self.assertEqual(secrets['allowed_scopes'], ['/lucy/runtime', '/hannah/ssh-keys', '/contenthub/runtime', '/lucy-runtime/meshcentral-server-url', '/lucy-runtime/meshcentral-cert-hash'])
 
     def test_lucy_adapter_required_marker_covers_contenthub_and_qmd_labels(self):
         manifest = json.loads(MANIFEST.read_text())

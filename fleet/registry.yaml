@@ -140,7 +140,7 @@ lucy:
   infisical_identity: lucy-runtime     # planned — INFRA-01
   capabilities: [contenthub-creator, contenthub-scanner, contenthub-render-worker, qmd-runtime, hermes-profile, a008-dev-instance, hannah-ssh-access, heavy-compute]
   grants: [contenthub-creator, contenthub-scanner, contenthub-render-worker, qmd-runtime, hermes-profile, a008-dev-instance, hannah-ssh-access, heavy-compute]
-  forbidden: [publish, email.send, crm.write, trading.execute, ollama-daemon, portable-sleep-mode, caffeinate-wrapper]
+  forbidden: [publish, email.send, crm.write, trading.execute, portable-sleep-mode, caffeinate-wrapper]
   status: planned
   role: hannah-contenthub-pc; stationary always-on 24/7 compute anchor; ContentHub creator/scanner/render worker; QMD runtime under hannah + kenneth; Hermes profile "lucy"; A008 dev instance; Hannah SSH access; supply contenthub-prod grants
 

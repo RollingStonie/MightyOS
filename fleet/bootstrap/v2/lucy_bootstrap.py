@@ -44,6 +44,7 @@ ALLOWED_MODULES = {
     "hermes-profile", "git-clone-mirror", "a008-dev-instance",
     "hannah-user-account", "contenthub-creator", "contenthub-scanner",
     "contenthub-render-worker", "qmd-runtime",
+    "ollama-qwen3.8", "meshcentral-agent",
 }
 FORBIDDEN_MODULES = {"messaging", "discord-bot", "slack-bot", "trading-execute", "caffeinate-wrapper"}
 FORBIDDEN_GRANTS = {"trading.execute", "publish", "email.send", "crm.write"}
@@ -56,17 +57,24 @@ EXPECTED_LABELS = [
     "com.mightyos.contenthub.celery-worker",
     "com.mightyos.contenthub.celery-render-worker",
     "com.mightyos.qmd.runtime",
+    "com.mightyos.lucy.ollama",
+    "com.mightyos.lucy.meshcentral-agent",
 ]
-PLANNER_OWNED_LABELS = {"com.mightyos.lucy.watcher", "com.mightyos.lucy.hermes-bot"}
+PLANNER_OWNED_LABELS = {
+    "com.mightyos.lucy.watcher",
+    "com.mightyos.lucy.hermes-bot",
+    "com.mightyos.lucy.ollama",
+    "com.mightyos.lucy.meshcentral-agent",
+}
 ADAPTER_REQUIRED_SENTINEL_PREFIX = "ADAPTER REQUIRED"
 EXPECTED_GRANTS = {
     "contenthub-creator", "contenthub-scanner", "contenthub-render-worker",
     "qmd-runtime", "hermes-profile", "a008-dev-instance", "hannah-ssh-access",
     "heavy-compute",
 }
-EXPECTED_DENIALS = {"publish", "email.send", "crm.write", "trading.execute", "ollama-daemon", "portable-sleep-mode", "caffeinate-wrapper"}
+EXPECTED_DENIALS = {"publish", "email.send", "crm.write", "trading.execute", "portable-sleep-mode", "caffeinate-wrapper"}
 EXPECTED_SECRET_NAMES = ["INFISICAL_MACHINE_IDENTITY_TOKEN", "DISCORD_BOT_TOKEN_LUCY"]
-EXPECTED_SECRET_SCOPES = ["/lucy/runtime", "/hannah/ssh-keys", "/contenthub/runtime"]
+EXPECTED_SECRET_SCOPES = ["/lucy/runtime", "/hannah/ssh-keys", "/contenthub/runtime", "/lucy-runtime/meshcentral-server-url", "/lucy-runtime/meshcentral-cert-hash"]
 EXPECTED_TAILSCALE_TAG = "tag:contenthub-prod"
 EXPECTED_TAILSCALE_ACL = "tag:contenthub-prod"
 EXPECTED_HANNAH_SSH_KEY_PATH = "/hannah/ssh-keys/id_ed25519.pub"
@@ -322,6 +330,17 @@ def build_plan(manifest: dict[str, Any], root: Path, owner_uid: str | None) -> d
     label_commands = {
         "com.mightyos.lucy.watcher": ["/usr/bin/env", "python3", "/opt/mightyos/libexec/lucy-watcher-loopback.py"],
         "com.mightyos.lucy.hermes-bot": ["/usr/bin/env", "python3", "-m", "hermes.runtime", "--profile", "lucy"],
+        # Ollama serves the local qwen3.8 model for ContentHub heavy-compute / authoring flows.
+        # Program path is the canonical Homebrew install; the runtime adapter is responsible for
+        # confirming the binary exists on the target host before bootstrapping.
+        "com.mightyos.lucy.ollama": ["/opt/homebrew/bin/ollama", "serve"],
+        # MeshCentral agent connects the box to the fleet MeshCentral server. Server URL and
+        # cert-hash come from Infisical at runtime; the bootstrap manifest only declares the
+        # scope allowlist, never the values.
+        "com.mightyos.lucy.meshcentral-agent": [
+            "/usr/bin/env", "sh", "-c",
+            '/usr/bin/env INFISICAL_MESH_URL="$INFISICAL_MESH_URL" INFISICAL_MESH_HASH="$INFISICAL_MESH_HASH" exec /opt/mightyos/libexec/meshagent --server-url="$INFISICAL_MESH_URL" --cert-hash="$INFISICAL_MESH_HASH"',
+        ],
     }
     # ContentHub / QMD labels are owned by their own adapters; the planner emits a fail-loud
     # sentinel ProgramArguments so a missing adapter is visible in launchd logs the moment

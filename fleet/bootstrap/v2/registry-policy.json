@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "source": "fleet/registry.yaml",
-  "source_sha256": "d46cd09c469ec03a4379bca58ed141767c5651a028e8f491523de0a884d40806",
+  "source_sha256": "69acfbf2fb9aa992017ac5da1e0c611c2eba5833c577bf3b7b2d1282f75b5218",
   "agents": {
     "lucy": {
       "discord_identity": null,
@@ -20,7 +20,6 @@
         "email.send",
         "crm.write",
         "trading.execute",
-        "ollama-daemon",
         "portable-sleep-mode",
         "caffeinate-wrapper"
       ],

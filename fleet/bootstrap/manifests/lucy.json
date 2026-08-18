@@ -5,7 +5,7 @@
   "service_account": "contenthub-prod",
   "watcher_source": {"path": "opt/mightyos/a008/tools/watcher/agent_watcher.py", "sha256": "eb9c2b7a18eec0f066eddb2c0e3104243dd80af084b20c5e8e98748b573f5339", "mode": "0644", "owner": "root:wheel"},
   "required_grants": ["contenthub-creator", "contenthub-scanner", "contenthub-render-worker", "qmd-runtime", "hermes-profile", "a008-dev-instance", "hannah-ssh-access", "heavy-compute"],
-  "denied_grants": ["publish", "email.send", "crm.write", "trading.execute", "ollama-daemon", "portable-sleep-mode", "caffeinate-wrapper"],
+  "denied_grants": ["publish", "email.send", "crm.write", "trading.execute", "portable-sleep-mode", "caffeinate-wrapper"],
   "lifecycle": {
     "initial": "registered",
     "promotion_path": ["registered", "provisioned", "probation", "ready"],
@@ -23,7 +23,9 @@
     "contenthub-scanner",
     "contenthub-render-worker",
     "qmd-runtime",
-    "trading-research"
+    "trading-research",
+    "ollama-qwen3.8",
+    "meshcentral-agent"
   ],
   "network": {
     "watcher_port": 8109,
@@ -46,7 +48,7 @@
   },
   "secrets": {
     "required_names": ["INFISICAL_MACHINE_IDENTITY_TOKEN", "DISCORD_BOT_TOKEN_LUCY"],
-    "allowed_scopes": ["/lucy/runtime", "/hannah/ssh-keys", "/contenthub/runtime"],
+    "allowed_scopes": ["/lucy/runtime", "/hannah/ssh-keys", "/contenthub/runtime", "/lucy-runtime/meshcentral-server-url", "/lucy-runtime/meshcentral-cert-hash"],
     "hannah_ssh_key_path": "/hannah/ssh-keys/id_ed25519.pub"
   },
   "hermes": {"enabled": true, "profile_name": "lucy", "surface": "discord", "channel": "#agent-lucy"},
@@ -58,7 +60,9 @@
       "com.mightyos.contenthub.fastapi",
       "com.mightyos.contenthub.celery-worker",
       "com.mightyos.contenthub.celery-render-worker",
-      "com.mightyos.qmd.runtime"
+      "com.mightyos.qmd.runtime",
+      "com.mightyos.lucy.ollama",
+      "com.mightyos.lucy.meshcentral-agent"
     ],
     "adapter_required": {
       "com.mightyos.contenthub.fastapi": "real ContentHub FastAPI uvicorn start command for contenthub-prod; owned by contenthub-render-worker adapter",

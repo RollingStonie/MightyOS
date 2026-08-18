@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import importlib.util
 import json
 import os
 import re
@@ -18,6 +19,21 @@ import tempfile
 from xml.sax.saxutils import escape as xml_escape
 from pathlib import Path
 from typing import Any
+
+# The rollback verifier lives in a sibling module that has no package
+# ``__init__.py`` ancestor, so a plain ``from fleet...`` import would fail
+# when this file is loaded as a script.  Load it via spec so both the
+# production CLI invocation (``python3 lucy_bootstrap.py …``) and the unit
+# tests (which also ``spec_from_file_location`` this file) see the same
+# module reference.
+_ROLLBACK_VERIFY_PATH = Path(__file__).resolve().parent / "rollback_verify.py"
+_rollback_verify_spec = importlib.util.spec_from_file_location(
+    "fleet_bootstrap_v2_rollback_verify", _ROLLBACK_VERIFY_PATH
+)
+_rollback_verify_module = importlib.util.module_from_spec(_rollback_verify_spec)
+sys.modules.setdefault("fleet_bootstrap_v2_rollback_verify", _rollback_verify_module)
+_rollback_verify_spec.loader.exec_module(_rollback_verify_module)
+verify_rollback = _rollback_verify_module.verify_rollback
 
 ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_MANIFEST = ROOT / "fleet/bootstrap/manifests/lucy.json"
@@ -624,6 +640,12 @@ def command_rollback(args: argparse.Namespace) -> int:
     approved_adapter(policy, args.approved_runtime_adapter)
     plan = {"agent": "lucy", "manifest_sha256": receipt["manifest_sha256"], "resources": receipt["resources"], "binding": receipt["binding"], "watcher_source": receipt["watcher_source"]}
     run_adapter(args.approved_runtime_adapter, "rollback", plan, args.root)
+    all_removed, still_present = verify_rollback(receipt["resources"], str(args.root))
+    if not all_removed:
+        raise BootstrapError(
+            "rollback verification failed: managed resources still present: "
+            + ", ".join(sorted(still_present))
+        )
     receipt["status"] = "rolled_back"
     atomic_json(receipt_path(args.root), receipt)
     print("ROLLED_BACK: only receipt-scoped resources were requested from the adapter")

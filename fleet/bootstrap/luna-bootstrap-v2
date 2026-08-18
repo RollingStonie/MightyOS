@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Safe Luna bootstrap v2. It plans by default; mutation requires an approved adapter.
+set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+exec python3 "$SCRIPT_DIR/v2/luna_bootstrap.py" "$@"

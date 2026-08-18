@@ -1,0 +1,19 @@
+{
+  "schema_version": 2,
+  "source": "fleet/registry.yaml",
+  "source_sha256": "9fc2deafa47a567774500dcf0cb2f4d3c7a2c25115a4e0a537389c6fdf376b70",
+  "agents": {
+    "lucy": {
+      "discord_identity": null,
+      "grants": ["contenthub-creator", "contenthub-scanner", "contenthub-render-worker", "qmd-runtime", "hermes-profile", "a008-dev-instance", "hannah-ssh-access", "heavy-compute"],
+      "forbidden": ["publish", "email.send", "crm.write", "trading.execute", "ollama-daemon", "portable-sleep-mode", "caffeinate-wrapper"],
+      "approved_adapters": []
+    },
+    "luna": {
+      "discord_identity": null,
+      "grants": ["hermes-profile", "portable-dev", "coding-worker", "git-clone-mirror", "a008-dev-instance", "trading-research"],
+      "forbidden": ["publish", "email.send", "crm.write", "trading.execute", "ollama-daemon", "contenthub-render", "always-on-power"],
+      "approved_adapters": []
+    }
+  }
+}

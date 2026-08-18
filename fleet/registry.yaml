@@ -1,8 +1,8 @@
 # ============================================================
 # GENERATED FILE — do not hand-edit.
 # Compiled by tools/fleet_registry/publish.py from A008 registry/fleet-agents.yaml
-# source_commit: 715708ad566bb4783642eeb088c34b199c2b685b
-# published_at: 2026-08-18T09:00:55.153022+00:00
+# source_commit: d26fb08dbed6514bcb555b33d8a3f6525b2199b5
+# published_at: 2026-08-18T09:28:35.858905+00:00
 # Edit the source in A008, not this file — hand edits here are drift and will be
 # silently overwritten by the next publish run.
 # ============================================================
@@ -134,13 +134,13 @@ lucy:
   tailscale_ip: TBD
   tailscale: lucy.tailnet
   state: registered
-  discord_identity: null               # compute host does not earn a bot identity by default
-  discord_app_id: null   # TODO: backfill from the live bot (drift_check.py --live) or Kenneth
-  discord_identity_verified_at: null   # never verified by this mechanism yet
+  discord_identity: lucy-bot
+  discord_app_id: 1529820504678989885
+  discord_identity_verified_at: 2026-08-18
   infisical_identity: lucy-runtime     # planned — INFRA-01
-  capabilities: [contenthub-creator, contenthub-scanner, contenthub-render-worker, qmd-runtime, hermes-profile, a008-dev-instance, hannah-ssh-access, heavy-compute]
-  grants: [contenthub-creator, contenthub-scanner, contenthub-render-worker, qmd-runtime, hermes-profile, a008-dev-instance, hannah-ssh-access, heavy-compute]
-  forbidden: [publish, email.send, crm.write, trading.execute, ollama-daemon, portable-sleep-mode, caffeinate-wrapper]
+  capabilities: [contenthub-creator, contenthub-scanner, contenthub-render-worker, qmd-runtime, hermes-profile, a008-dev-instance, hannah-ssh-access, ollama-qwen3.8, meshcentral-agent, heavy-compute]
+  grants: [contenthub-creator, contenthub-scanner, contenthub-render-worker, qmd-runtime, hermes-profile, a008-dev-instance, hannah-ssh-access, ollama-qwen3.8, meshcentral-agent, heavy-compute]
+  forbidden: [publish, email.send, crm.write, trading.execute, portable-sleep-mode, caffeinate-wrapper]
   status: planned
   role: hannah-contenthub-pc; stationary always-on 24/7 compute anchor; ContentHub creator/scanner/render worker; QMD runtime under hannah + kenneth; Hermes profile "lucy"; A008 dev instance; Hannah SSH access; supply contenthub-prod grants
 
@@ -149,14 +149,14 @@ luna:
   tailscale_ip: TBD
   tailscale: luna.tailnet
   state: registered
-  discord_identity: null               # portable machine does not earn a bot identity by default
-  discord_app_id: null   # TODO: backfill from the live bot (drift_check.py --live) or Kenneth
-  discord_identity_verified_at: null   # never verified by this mechanism yet
+  discord_identity: luna-bot
+  discord_app_id: 1529820746795188285
+  discord_identity_verified_at: 2026-08-18
   infisical_identity: luna-runtime      # planned — provision only during approved onboarding
   hermes_profile: luna                # portable-machine Hermes edge profile (matches Ashley/George convention)
-  capabilities: [hermes-profile, portable-dev, coding-worker, git-clone-mirror, a008-dev-instance, trading-research]
-  grants: [hermes-profile, portable-dev, coding-worker, git-clone-mirror, a008-dev-instance, trading-research]
-  forbidden: [publish, email.send, crm.write, trading.execute, ollama-daemon, contenthub-render, always-on-power]
+  capabilities: [hermes-profile, portable-dev, coding-worker, git-clone-mirror, a008-dev-instance, ollama-qwen3.8, meshcentral-agent, trading-research]
+  grants: [hermes-profile, portable-dev, coding-worker, git-clone-mirror, a008-dev-instance, ollama-qwen3.8, meshcentral-agent, trading-research]
+  forbidden: [publish, email.send, crm.write, trading.execute, contenthub-render, always-on-power]
   status: planned
   role: hermes-portable-dev; portable dormant-when-offline machine; caffeinate -d -i -u while powered; Hermes profile "luna"; on-demand coding worker + trading research; A008 dev instance; supply luna-personal grants + fleet-core read-only
   expected_daily_output: on demand

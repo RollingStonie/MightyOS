@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "source": "fleet/registry.yaml",
-  "source_sha256": "69acfbf2fb9aa992017ac5da1e0c611c2eba5833c577bf3b7b2d1282f75b5218",
+  "source_sha256": "ab3c01210eb7b92194ba233efc7276a7091b1ff70d076a3f6637d6ae5519d893",
   "agents": {
     "lucy": {
       "discord_identity": null,

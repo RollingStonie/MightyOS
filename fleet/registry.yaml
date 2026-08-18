@@ -2,7 +2,7 @@
 # GENERATED FILE — do not hand-edit.
 # Compiled by tools/fleet_registry/publish.py from A008 registry/fleet-agents.yaml
 # source_commit: 715708ad566bb4783642eeb088c34b199c2b685b
-# published_at: 2026-08-18T07:35:06.822686+00:00
+# published_at: 2026-08-18T09:00:55.153022+00:00
 # Edit the source in A008, not this file — hand edits here are drift and will be
 # silently overwritten by the next publish run.
 # ============================================================
@@ -140,7 +140,7 @@ lucy:
   infisical_identity: lucy-runtime     # planned — INFRA-01
   capabilities: [contenthub-creator, contenthub-scanner, contenthub-render-worker, qmd-runtime, hermes-profile, a008-dev-instance, hannah-ssh-access, heavy-compute]
   grants: [contenthub-creator, contenthub-scanner, contenthub-render-worker, qmd-runtime, hermes-profile, a008-dev-instance, hannah-ssh-access, heavy-compute]
-  forbidden: [publish, email.send, crm.write, trading.execute, portable-sleep-mode, caffeinate-wrapper]
+  forbidden: [publish, email.send, crm.write, trading.execute, ollama-daemon, portable-sleep-mode, caffeinate-wrapper]
   status: planned
   role: hannah-contenthub-pc; stationary always-on 24/7 compute anchor; ContentHub creator/scanner/render worker; QMD runtime under hannah + kenneth; Hermes profile "lucy"; A008 dev instance; Hannah SSH access; supply contenthub-prod grants
 

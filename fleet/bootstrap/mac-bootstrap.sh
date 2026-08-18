@@ -10,18 +10,23 @@
 #   TS_KEY     — Tailscale auth key (from Tailscale admin console)
 #
 # Optional env vars:
-#   BOT_TOKEN  — Discord bot token for this agent
-#   DS_KEY     — DeepSeek API key (default: sk-123dda9dcd104362929f51dc48cb88c1)
-#   GH_TOKEN   — GitHub PAT for downloading private repo files
-#   HERMES_RAW — Base raw URL for Hermes scripts
-#   SKIP_OLLAMA— set to "1" to skip Ollama install
+#   BOT_TOKEN     — Discord bot token for this agent
+#   DS_KEY        — DeepSeek API key. No default — pass explicitly or via Infisical;
+#                   a hardcoded fallback used to live here, removed 2026-08-06 (was a
+#                   real key committed in plaintext).
+#   GH_TOKEN      — GitHub PAT for downloading private repo files
+#   HERMES_RAW    — Base raw URL for Hermes scripts
+#   SKIP_OLLAMA   — set to "1" to skip Ollama install
+#   REPOS         — space-separated "RepoName:local-dir" pairs to clone into
+#                   ~/AG_Mission, e.g. REPOS="ContentHub:M012_ContentHub Mighty-Relationship-Management:A009_MRM"
+#   DOTFILES_REPO — name of Kenneth's personal skills/dotfiles repo to clone as ~/.claude
 
 set -e
 
 AGENT="${AGENT:?AGENT env var required}"
 TS_KEY="${TS_KEY:?TS_KEY env var required}"
 BOT_TOKEN="${BOT_TOKEN:-}"
-DS_KEY="${DS_KEY:-sk-123dda9dcd104362929f51dc48cb88c1}"
+DS_KEY="${DS_KEY:-}"
 GH_TOKEN="${GH_TOKEN:-}"
 HERMES_RAW="${HERMES_RAW:-https://raw.githubusercontent.com/RollingStonie/MightyOS/main/sync}"
 HERMES_DIR="$HOME/hermes"
@@ -68,10 +73,14 @@ else
     log "  WARNING: tailscale not in PATH — open /Applications/Tailscale.app and join with key: $TS_KEY"
 fi
 
-# ─── 3. Python 3, Node.js, Chrome, Discord, Slack, Keeper ───────────────────
+# ─── 3. Python 3, Node.js, Chrome, Discord, Slack, Keeper, Docker, pCloud ────
 log "Installing Python, Node.js, and desktop apps..."
 brew install python@3.12 node 2>/dev/null || true
-brew install --cask google-chrome discord slack keeper-password-manager nordvpn 2>/dev/null || true
+brew install --cask google-chrome discord slack keeper-password-manager nordvpn docker pcloud-drive 2>/dev/null || true
+
+# ─── 3b. Infisical CLI ────────────────────────────────────────────────────────
+log "Installing Infisical CLI..."
+brew install infisical/get-cli/infisical 2>/dev/null || true
 
 # Link python3 if needed
 PYTHON="$(brew --prefix python@3.12)/bin/python3.12"
@@ -151,13 +160,43 @@ AGENT_SYS=You are $AGENT, Kenneth's fleet agent. Be concise and direct.
 EOF
 fi
 
-# ─── 10. MightyOS Brain repo ─────────────────────────────────────────────────
+# ─── 10. MightyOS Brain repo + project repos + Kenneth's dotfiles/skills ─────
 if [[ -n "$GH_TOKEN" ]]; then
     log "Cloning MightyOS Brain repo..."
     if [[ ! -d "$HOME/MightyOS" ]]; then
         git clone "https://$GH_TOKEN@github.com/RollingStonie/MightyOS.git" "$HOME/MightyOS" 2>/dev/null
     else
         git -C "$HOME/MightyOS" pull --quiet
+    fi
+
+    # Project repos this agent needs — REPOS env var is a space-separated list of
+    # "RepoName:local-dir-name" pairs, e.g. "ContentHub:M012_ContentHub". Set per
+    # machine at invocation time once each agent's real workload is finalized;
+    # empty by default so this step is a no-op until then.
+    mkdir -p "$HOME/AG_Mission"
+    for pair in ${REPOS:-}; do
+        repo="${pair%%:*}"
+        dir="${pair##*:}"
+        target="$HOME/AG_Mission/$dir"
+        if [[ ! -d "$target" ]]; then
+            log "  Cloning $repo -> $target"
+            git clone "https://$GH_TOKEN@github.com/RollingStonie/$repo.git" "$target" 2>/dev/null || \
+                log "  [FAIL] $repo — check repo name/access"
+        else
+            log "  $dir already present, pulling..."
+            git -C "$target" pull --quiet 2>/dev/null || true
+        fi
+    done
+
+    # Kenneth's personal Claude skills/dotfiles — DOTFILES_REPO env var, e.g.
+    # "kenneth-dotfiles". Not yet created — see handoff notes. No-op until set.
+    if [[ -n "${DOTFILES_REPO:-}" ]]; then
+        log "Cloning dotfiles/skills repo..."
+        if [[ ! -d "$HOME/.claude" ]]; then
+            git clone "https://$GH_TOKEN@github.com/RollingStonie/${DOTFILES_REPO}.git" "$HOME/.claude" 2>/dev/null
+        else
+            log "  ~/.claude already exists — not overwriting. Merge manually."
+        fi
     fi
 fi
 
@@ -249,6 +288,9 @@ log "  Discord:     installed (/Applications/Discord.app)"
 log "  Slack:       installed (/Applications/Slack.app)"
 log "  Keeper:      installed — open and log in manually"
 log "  NordVPN:     installed — open and log in manually"
+log "  Docker:      installed (/Applications/Docker.app) — open once to finish setup"
+log "  pCloud:      installed — open and log in manually, then enable folder mount"
+log "  Infisical:   $(command -v infisical || echo 'check brew')"
 log "  Claude Code: $(npm list -g @anthropic-ai/claude-code --depth 0 2>/dev/null | grep claude || echo 'check npm')"
 log "  Codex:       $(npm list -g @openai/codex --depth 0 2>/dev/null | grep codex || echo 'check npm')"
 log ""

@@ -1,209 +1,261 @@
-# ============================================================
-# GENERATED FILE — do not hand-edit.
-# Compiled by tools/fleet_registry/publish.py from A008 registry/fleet-agents.yaml
-# source_commit: d26fb08dbed6514bcb555b33d8a3f6525b2199b5
-# published_at: 2026-08-18T09:28:35.858905+00:00
-# Edit the source in A008, not this file — hand edits here are drift and will be
-# silently overwritten by the next publish run.
-# ============================================================
-
-# registry/fleet-agents.yaml — CANONICAL EDIT SURFACE for fleet agent identity.
-# Compiled + published into MightyOS/fleet/registry.yaml by tools/fleet_registry/publish.py
-# (FLEET-20, 2026-08-09). Edit THIS file, never MightyOS/fleet/registry.yaml directly — a hand
-# edit there will be silently overwritten by the next publish run and is itself a drift signal
-# the next drift_check.py pass will catch.
-#
-# Unified capability grant model (M016 spec 2026-07-23 § Unified capability grant model):
-#   grants[]    — capability tokens this agent may exercise. A task/manifest may only be
-#                 routed to an agent whose grants ⊇ the task capability + manifest
-#                 grants_required. Derived conservatively from `capabilities` + role.
-#   forbidden[] — hard registry-level denials. A manifest can NARROW an agent's grants,
-#                 never WIDEN them; forbidden always wins over any grant.
-#   state       — lifecycle state (M016 spec § Agent lifecycle states):
-#                 registered → provisioned → probation → ready → degraded → retired.
-#   discord_identity / infisical_identity — one declaration from which Discord + Infisical
-#                 scopes derive. Infisical machine identities are `planned` (INFRA-01, not
-#                 yet provisioned); names are reserved here so manifests can reference them.
-#   tailscale   — MagicDNS name (IP kept in tailscale_ip for backward compat).
-#   discord_identity_verified_at — ISO date (YYYY-MM-DD) this agent's discord_identity/
-#                 discord_app_id was last confirmed to match the LIVE running bot (via
-#                 tools/fleet_registry/drift_check.py --live), or null if never verified by
-#                 this mechanism. drift_check.py flags null or >14-day-old values as stale.
-#   discord_app_id — the Discord application id (NOT a secret — safe to publish). The bot
-#                 TOKEN never appears in this file; it stays in
-#                 ~/.hermes/secrets/discord_agents.json or Infisical.
-#
-# PLATFORM BOUNDARY (2026-08-05; workflow-authority clarification accepted
-# 2026-08-11): QM is the preferred employee-facing platform for a gated pilot;
-# it is NOT a fleet agent and therefore has no row in this registry. A008 remains
-# the governance/delivery kernel and canonical machine authority for orchestrated
-# workflow/action lifecycle, leases, approvals, budgets, and audit. Plane remains
-# the human-visible company work ledger/projection and manual-intent surface; it
-# does not mutate canonical A008 state directly. Hermes remains the edge runtime
-# for the device/profile identities below. Buzz is reference-only during the QM
-# pilot. See ai/decisions/2026-08-11-a008-workflow-authority-plane-projection-adr.md.
-
 claire:
   device: MacBook M1 Max 32GB
   tailscale_ip: local
   tailscale: claire.tailnet
   state: ready
   discord_identity: claire-bot
-  discord_app_id: null   # TODO: backfill from the live bot (drift_check.py --live) or Kenneth
-  discord_identity_verified_at: null   # never verified by this mechanism yet
-  infisical_identity: claire-runtime   # planned — Infisical machine identity not yet provisioned (INFRA-01)
+  discord_app_id: null
+  discord_identity_verified_at: null
+  infisical_identity: claire-runtime
   primary_model: claude-sonnet-4-6
   fallback_model: claude-opus-4-8
-  capabilities: [dev, orchestration, browser-automation, email-pipeline]
-  grants: [dev, orchestration, browser-automation, email-draft, social-draft, crm.write, publish]
-  forbidden: []                        # orchestrator / chief-of-staff — no hard denials
+  capabilities:
+  - dev
+  - orchestration
+  - browser-automation
+  - email-pipeline
+  grants:
+  - dev
+  - orchestration
+  - browser-automation
+  - email-draft
+  - social-draft
+  - crm.write
+  - publish
+  forbidden: []
   produces: code, plans, email drafts
   expected_daily_output: varies
-
 mike:
   device: Dell Vostro 7500 Windows (i7, 16GB, GTX 1650 4GB)
   tailscale_ip: 100.73.8.31
   tailscale: mike.tailnet
   state: ready
   discord_identity: mike-bot
-  discord_app_id: null   # TODO: backfill from the live bot (drift_check.py --live) or Kenneth
-  discord_identity_verified_at: null   # never verified by this mechanism yet
-  infisical_identity: mike-runtime     # planned — INFRA-01
+  discord_app_id: null
+  discord_identity_verified_at: null
+  infisical_identity: mike-runtime
   primary_model: llama3.2:3b
   fallback_model: deepseek-chat
-  capabilities: [google-maps-scraping, lead-gen, gpu-helper, contenthub-render-qa]
-  grants: [lead-scrape, social-draft, gpu-helper, contenthub-render-qa]
-  forbidden: [publish, email.send, crm.write]   # scraper/worker — lead-scrape posts leads via its own channel, not a general CRM-write grant
-  hermes_home: 'C:\Users\Jomo\AppData\Local\hermes'  # live-verified 2026-08-05; active CLI/gateway home
-  service_workdir: 'C:\hermes'                         # bot/project code; deliberately separate from HERMES_HOME
-  legacy_home_candidate: 'C:\Users\Jomo\.hermes'     # audit consumers + back up before any cleanup; do not merge/delete from registry alone
-  profile_inventory_status: path-split-remediation-required  # Heartbeat/gateway use AppData; Watchdog still forces legacy .hermes
-  produces: leads → Twenty CRM POST /graphql (GraphQL createLead) — see fleet/pipeline-contracts.md
+  capabilities:
+  - google-maps-scraping
+  - lead-gen
+  - gpu-helper
+  - contenthub-render-qa
+  grants:
+  - lead-scrape
+  - social-draft
+  - gpu-helper
+  - contenthub-render-qa
+  forbidden:
+  - publish
+  - email.send
+  - crm.write
+  hermes_home: C:\Users\Jomo\AppData\Local\hermes
+  service_workdir: C:\hermes
+  legacy_home_candidate: C:\Users\Jomo\.hermes
+  profile_inventory_status: path-split-remediation-required
+  produces: "leads \u2192 Twenty CRM POST /graphql (GraphQL createLead) \u2014 see\
+    \ fleet/pipeline-contracts.md"
   schema:
     businessName: string
     phone: string
     location: string
-    source: "google-maps"
+    source: google-maps
     scrapedAt: ISO8601
-    status: "NEW"        # Twenty SELECT values are UPPER_CASE
-    brand: "AIRCHY"      # or MIGHTYTECHIE / OTHER
+    status: NEW
+    brand: AIRCHY
   expected_daily_output: 200 leads
   NOT: apollo, hunter.io, local-sqlite-storage, batched-writes
-
 mighty:
   device: Hostinger KVM2 VPS (2vCPU / 8GB RAM)
   tailscale_ip: 100.66.96.51
   tailscale: mighty.tailnet
   state: ready
   discord_identity: mighty-bot
-  discord_app_id: null   # TODO: backfill from the live bot (drift_check.py --live) or Kenneth
-  discord_identity_verified_at: null   # never verified by this mechanism yet
-  infisical_identity: mighty-runtime   # planned — INFRA-01
-  primary_model: deepseek-chat
-  fallback_model: claude-haiku-4-5
-  capabilities: [always-on-cron, slack-bridge, sequences, fleet-monitor]
-  grants: [always-on-cron, slack-bridge, sequences, fleet-monitor, email.send, crm.write]
-  forbidden: [publish]                 # sends outreach + enrolls leads (crm.write) but does not publish social
-  hermes_home: null                    # do not guess: verify service env + process command lines read-only first
-  hermes_home_status: read-only-verification-required
-  configured_systemd_workdir: /root    # ashley-gateway.service is inactive/dead as of 2026-08-05
-  active_runtime_status: manual-root-processes  # Ashley and Finn are separate root-owned manual gateways; do not restart the dead unit over them
-  produces: emails sent, leads enrolled, fleet digest
-  expected_daily_output: 50 emails sent
-
-brian:
-  device: Dell Vostro 15 3510 (i7-1165G7, 16GB RAM, Intel Iris Xe)
-  tailscale_ip: 100.127.107.122         # verified 2026-08-07; desktop-qq0ko3m
-  tailscale: brian.tailnet
-  state: registered                    # lifecycle remains registered; provisioning never completed
-  discord_identity: brian-bot
-  discord_app_id: null   # TODO: backfill from the live bot (drift_check.py --live) or Kenneth
-  discord_identity_verified_at: null   # never verified by this mechanism yet
-  infisical_identity: brian-runtime    # planned — INFRA-01
-  status: dormant                      # legitimate device; Kenneth cannot currently locate it
-  capabilities: [contenthub-scanner, light-cron, outreach-sending]
-  grants: [contenthub-scanner, light-cron, outreach-sending, email.send]   # sender role — email.send is a grant here, not forbidden
-  forbidden: [publish, crm.write]
-  role: always-on-cpu-network-box
-  blocked_by: dormant — physical verification before resuming provisioning
-  # Tailscale node nftQGDhYCD21CNTRL joined 2026-06-08 22:58 BST; last seen 2026-06-10.
-  # Keep this record; do not prune until Kenneth physically confirms the machine's status.
-
-lucy:
-  device: MacBook M5 128GB (planned stationary home anchor)
-  tailscale_ip: TBD
-  tailscale: lucy.tailnet
-  state: registered
-  discord_identity: lucy-bot
-  discord_app_id: 1529820504678989885
-  discord_identity_verified_at: 2026-08-18
-  infisical_identity: lucy-runtime     # planned — INFRA-01
-  capabilities: [contenthub-creator, contenthub-scanner, contenthub-render-worker, qmd-runtime, hermes-profile, a008-dev-instance, hannah-ssh-access, ollama-qwen3.8, meshcentral-agent, heavy-compute]
-  grants: [contenthub-creator, contenthub-scanner, contenthub-render-worker, qmd-runtime, hermes-profile, a008-dev-instance, hannah-ssh-access, ollama-qwen3.8, meshcentral-agent, heavy-compute]
-  forbidden: [publish, email.send, crm.write, trading.execute, portable-sleep-mode, caffeinate-wrapper]
-  status: planned
-  role: hannah-contenthub-pc; stationary always-on 24/7 compute anchor; ContentHub creator/scanner/render worker; QMD runtime under hannah + kenneth; Hermes profile "lucy"; A008 dev instance; Hannah SSH access; supply contenthub-prod grants
-
-luna:
-  device: MacBook M5 128GB (planned portable machine)
-  tailscale_ip: TBD
-  tailscale: luna.tailnet
-  state: registered
-  discord_identity: luna-bot
-  discord_app_id: 1529820746795188285
-  discord_identity_verified_at: 2026-08-18
-  infisical_identity: luna-runtime      # planned — provision only during approved onboarding
-  hermes_profile: luna                # portable-machine Hermes edge profile (matches Ashley/George convention)
-  capabilities: [hermes-profile, portable-dev, coding-worker, git-clone-mirror, a008-dev-instance, ollama-qwen3.8, meshcentral-agent, trading-research]
-  grants: [hermes-profile, portable-dev, coding-worker, git-clone-mirror, a008-dev-instance, ollama-qwen3.8, meshcentral-agent, trading-research]
-  forbidden: [publish, email.send, crm.write, trading.execute, contenthub-render, always-on-power]
-  status: planned
-  role: hermes-portable-dev; portable dormant-when-offline machine; caffeinate -d -i -u while powered; Hermes profile "luna"; on-demand coding worker + trading research; A008 dev instance; supply luna-personal grants + fleet-core read-only
-  expected_daily_output: on demand
-
-ashley:
-  device: vps-profile                  # Hermes profile on mighty's Hostinger KVM2 VPS (2vCPU / 8GB RAM) — not a separate box
-  tailscale_ip: 100.66.96.51           # shares mighty's VPS host
-  tailscale: mighty.tailnet            # co-resident on mighty's VPS
-  state: ready
-  infisical_identity: ashley-runtime   # planned — INFRA-01 (machine identity not yet provisioned)
-  primary_model: deepseek-v4-flash
-  comms: slack-only                    # channel C0BHCCP923B (#agent-ashley) — no Discord identity; outreach/employee surface is Slack only
-  capabilities: [warm-email-marketing, campaign-management, mautic-operations]
-  grants: [email.send, crm.write, mautic-ops]
-  forbidden: [publish, lead-scrape, sysadmin, docker-admin]
-  hermes_profile: ashley
-  profile_path_observed: /root/.hermes/profiles/ashley
-  hermes_home_status: read-only-verification-required  # confirm systemd environment; profile path alone does not prove HERMES_HOME
-  produces: email campaigns, lead nurturing, engagement tracking
-  expected_daily_output: warm email sequences
-  # RISK (2026-07-24 hardening audit): ashley's gateway runs as ROOT on the VPS
-  # (systemd unit ashley-gateway.service, User=root). forbidden:[sysadmin, docker-admin]
-  # is registry-level intent only — NOT OS-enforced while running as root. Pending
-  # migration to a dedicated unprivileged user (see M016 hardening receipt / migration plan).
-
-george:
-  device: vps-profile                  # Hermes profile on mighty's Hostinger KVM2 VPS (2vCPU / 8GB RAM) — not a separate box
-  tailscale_ip: 100.66.96.51           # shares mighty's VPS host
-  tailscale: mighty.tailnet            # co-resident on mighty's VPS
-  state: registered                    # discovered undocumented 2026-08-09 (process up since 2026-08-08); verification pending — promote to probation once model/Slack/heartbeat verified
-  discord_identity: null               # brand-knowledge Slack librarian — no Discord identity per registry convention
   discord_app_id: null
   discord_identity_verified_at: null
-  infisical_identity: george-runtime   # planned — INFRA-01 (machine identity not yet provisioned)
-  primary_model: null                  # TODO: verify on VPS — what model is the live `hermes -p george gateway run --replace` actually using?
-  comms: slack-only                    # intended Slack librarian surface — channel TBD post-verification
-  capabilities: [brand-knowledge, employee-queries, slack-librarian]
-  grants: [employee-query]             # read-only knowledge queries against brand/company corpus
-  forbidden: [publish, email.send, crm.write, lead-scrape, sysadmin, docker-admin, write]
+  infisical_identity: mighty-runtime
+  primary_model: deepseek-chat
+  fallback_model: claude-haiku-4-5
+  capabilities:
+  - always-on-cron
+  - slack-bridge
+  - sequences
+  - fleet-monitor
+  grants:
+  - always-on-cron
+  - slack-bridge
+  - sequences
+  - fleet-monitor
+  - email.send
+  - crm.write
+  forbidden:
+  - publish
+  hermes_home: null
+  hermes_home_status: read-only-verification-required
+  configured_systemd_workdir: /root
+  active_runtime_status: manual-root-processes
+  produces: emails sent, leads enrolled, fleet digest
+  expected_daily_output: 50 emails sent
+brian:
+  device: Dell Vostro 15 3510 (i7-1165G7, 16GB RAM, Intel Iris Xe)
+  tailscale_ip: 100.127.107.122
+  tailscale: brian.tailnet
+  state: registered
+  discord_identity: brian-bot
+  discord_app_id: null
+  discord_identity_verified_at: null
+  infisical_identity: brian-runtime
+  status: dormant
+  capabilities:
+  - contenthub-scanner
+  - light-cron
+  - outreach-sending
+  grants:
+  - contenthub-scanner
+  - light-cron
+  - outreach-sending
+  - email.send
+  forbidden:
+  - publish
+  - crm.write
+  role: always-on-cpu-network-box
+  blocked_by: "dormant \u2014 physical verification before resuming provisioning"
+lucy:
+  device: MacBook M5 128GB (planned stationary home anchor)
+  tailscale_ip: 100.89.151.8
+  tailscale: kens-macbook-pro.tail546eb8.ts.net
+  state: ready
+  discord_identity: lucy-bot
+  discord_app_id: 1529820504678989885
+  discord_identity_verified_at: '2026-08-21'
+  infisical_identity: lucy-runtime
+  capabilities:
+  - contenthub-creator
+  - contenthub-scanner
+  - contenthub-render-worker
+  - qmd-runtime
+  - hermes-profile
+  - a008-dev-instance
+  - hannah-ssh-access
+  - ollama-qwen3.8
+  - meshcentral-agent
+  - heavy-compute
+  grants:
+  - contenthub-creator
+  - contenthub-scanner
+  - contenthub-render-worker
+  - qmd-runtime
+  - hermes-profile
+  - a008-dev-instance
+  - hannah-ssh-access
+  - ollama-qwen3.8
+  - meshcentral-agent
+  - heavy-compute
+  forbidden:
+  - publish
+  - email.send
+  - crm.write
+  - trading.execute
+  - portable-sleep-mode
+  - caffeinate-wrapper
+  status: planned
+  role: hannah-contenthub-pc; stationary always-on 24/7 compute anchor; ContentHub
+    creator/scanner/render worker; QMD runtime under hannah + kenneth; Hermes profile
+    "lucy"; A008 dev instance; Hannah SSH access; supply contenthub-prod grants
+luna:
+  device: MacBook M5 128GB (planned portable machine)
+  tailscale_ip: 100.102.154.102
+  tailscale: jomos-macbook-pro.tail546eb8.ts.net
+  state: ready
+  discord_identity: luna-bot
+  discord_app_id: 1529820746795188285
+  discord_identity_verified_at: '2026-08-21'
+  infisical_identity: luna-runtime
+  hermes_profile: luna
+  capabilities:
+  - hermes-profile
+  - portable-dev
+  - coding-worker
+  - git-clone-mirror
+  - a008-dev-instance
+  - ollama-qwen3.8
+  - meshcentral-agent
+  - trading-research
+  grants:
+  - hermes-profile
+  - portable-dev
+  - coding-worker
+  - git-clone-mirror
+  - a008-dev-instance
+  - ollama-qwen3.8
+  - meshcentral-agent
+  - trading-research
+  forbidden:
+  - publish
+  - email.send
+  - crm.write
+  - trading.execute
+  - contenthub-render
+  - always-on-power
+  status: planned
+  role: hermes-portable-dev; portable dormant-when-offline machine; caffeinate -d
+    -i -u while powered; Hermes profile "luna"; on-demand coding worker + trading
+    research; A008 dev instance; supply luna-personal grants + fleet-core read-only
+  expected_daily_output: on demand
+ashley:
+  device: vps-profile
+  tailscale_ip: 100.66.96.51
+  tailscale: mighty.tailnet
+  state: ready
+  infisical_identity: ashley-runtime
+  primary_model: deepseek-v4-flash
+  comms: slack-only
+  capabilities:
+  - warm-email-marketing
+  - campaign-management
+  - mautic-operations
+  grants:
+  - email.send
+  - crm.write
+  - mautic-ops
+  forbidden:
+  - publish
+  - lead-scrape
+  - sysadmin
+  - docker-admin
+  hermes_profile: ashley
+  profile_path_observed: /root/.hermes/profiles/ashley
+  hermes_home_status: read-only-verification-required
+  produces: email campaigns, lead nurturing, engagement tracking
+  expected_daily_output: warm email sequences
+george:
+  device: vps-profile
+  tailscale_ip: 100.66.96.51
+  tailscale: mighty.tailnet
+  state: registered
+  discord_identity: null
+  discord_app_id: null
+  discord_identity_verified_at: null
+  infisical_identity: george-runtime
+  primary_model: null
+  comms: slack-only
+  capabilities:
+  - brand-knowledge
+  - employee-queries
+  - slack-librarian
+  grants:
+  - employee-query
+  forbidden:
+  - publish
+  - email.send
+  - crm.write
+  - lead-scrape
+  - sysadmin
+  - docker-admin
+  - write
   hermes_profile: george
-  profile_path_observed: /opt/hermes-agent            # per kenneth-fleet skill, owned by user `george-+`
-  hermes_home_status: read-only-verification-required  # same discipline as ashley/mighty — confirm systemd env + process cmdline first
+  profile_path_observed: /opt/hermes-agent
+  hermes_home_status: read-only-verification-required
   produces: brand/company knowledge answers for employee Slack queries
-  expected_daily_output: TBD — pending verification + Slack channel setup
-  # DISCOVERED 2026-08-09: live `hermes -p george gateway run --replace` process running (up since Aug 8) with no prior registry/skill entry anywhere. Kenneth confirmed intent (brand-knowledge Slack librarian).
-  # TODO (FLEET onboarding checklist):
-  #   1. SSH to VPS read-only audit: verify profile path, model, Slack connection, heartbeat loop, SOUL/AGENTS.md existence
-  #   2. Decide heartbeat cadence and Slack channel for librarian queries
-  #   3. Provision Infisical `george-runtime` machine identity
-  #   4. Promote state registered → probation once verified, then ready once Slack channel is live
+  expected_daily_output: "TBD \u2014 pending verification + Slack channel setup"

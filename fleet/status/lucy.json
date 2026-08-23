@@ -1,0 +1,14 @@
+{
+  "agent": "lucy",
+  "last_seen": "2026-08-23T17:15:00Z",
+  "status": "online",
+  "current_task": "fleet bootstrap (post-install)",
+  "model_in_use": "qwen3:32b (20 GB) + qwen3-27b-abliterated (Q5_K, pending install)",
+  "results_today": 0,
+  "errors_today": 0,
+  "session_started": "2026-08-21T01:45:00Z",
+  "tailscale_ip": "100.89.151.8",
+  "macos_version": "26.6.2",
+  "disk_total_tb": 1.8,
+  "heartbeat_source": "claire-manual-init (real loop pending FLEET_WEBHOOK)"
+}

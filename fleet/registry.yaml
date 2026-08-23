@@ -1,8 +1,8 @@
 # ============================================================
 # GENERATED FILE — do not hand-edit.
 # Compiled by tools/fleet_registry/publish.py from A008 registry/fleet-agents.yaml
-# source_commit: d26fb08dbed6514bcb555b33d8a3f6525b2199b5
-# published_at: 2026-08-23T13:42:39.296157+00:00
+# source_commit: 278eb8ad8d5ba1f3aec5c286a8ef707b63c79d2a
+# published_at: 2026-08-23T17:44:11.651246+00:00
 # Edit the source in A008, not this file — hand edits here are drift and will be
 # silently overwritten by the next publish run.
 # ============================================================

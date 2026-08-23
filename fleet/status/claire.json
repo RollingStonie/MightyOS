@@ -1,8 +1,8 @@
 {
   "agent": "claire",
-  "last_seen": "2026-08-23T14:12:53Z",
+  "last_seen": "2026-08-23T14:43:04Z",
   "status": "online",
-  "current_task": "auto-detected: /opt/homebrew/Cellar/python@3.14/3.14.5/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Py",
+  "current_task": "auto-detected: node /Users/kenneth/.nvm/versions/node/v24.18.0/bin/codex exec --sandbox workspace-write --skip-git-repo-check --image=/",
   "model_in_use": "unknown",
   "results_today": 0,
   "errors_today": 0,

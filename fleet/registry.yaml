@@ -2,7 +2,7 @@
 # GENERATED FILE — do not hand-edit.
 # Compiled by tools/fleet_registry/publish.py from A008 registry/fleet-agents.yaml
 # source_commit: d26fb08dbed6514bcb555b33d8a3f6525b2199b5
-# published_at: 2026-08-21T00:46:52.759708+00:00
+# published_at: 2026-08-23T13:42:39.296157+00:00
 # Edit the source in A008, not this file — hand edits here are drift and will be
 # silently overwritten by the next publish run.
 # ============================================================
@@ -131,9 +131,9 @@ brian:
 
 lucy:
   device: MacBook M5 128GB (planned stationary home anchor)
-  tailscale_ip: TBD
-  tailscale: lucy.tailnet
-  state: registered
+  tailscale_ip: 100.89.151.8
+  tailscale: kens-macbook-pro.tail546eb8.ts.net
+  state: ready
   discord_identity: lucy-bot
   discord_app_id: 1529820504678989885
   discord_identity_verified_at: 2026-08-18
@@ -141,14 +141,14 @@ lucy:
   capabilities: [contenthub-creator, contenthub-scanner, contenthub-render-worker, qmd-runtime, hermes-profile, a008-dev-instance, hannah-ssh-access, ollama-qwen3.8, meshcentral-agent, heavy-compute]
   grants: [contenthub-creator, contenthub-scanner, contenthub-render-worker, qmd-runtime, hermes-profile, a008-dev-instance, hannah-ssh-access, ollama-qwen3.8, meshcentral-agent, heavy-compute]
   forbidden: [publish, email.send, crm.write, trading.execute, portable-sleep-mode, caffeinate-wrapper]
-  status: planned
+  status: active
   role: hannah-contenthub-pc; stationary always-on 24/7 compute anchor; ContentHub creator/scanner/render worker; QMD runtime under hannah + kenneth; Hermes profile "lucy"; A008 dev instance; Hannah SSH access; supply contenthub-prod grants
 
 luna:
   device: MacBook M5 128GB (planned portable machine)
-  tailscale_ip: TBD
-  tailscale: luna.tailnet
-  state: registered
+  tailscale_ip: 100.102.154.102
+  tailscale: jomos-macbook-pro.tail546eb8.ts.net
+  state: ready
   discord_identity: luna-bot
   discord_app_id: 1529820746795188285
   discord_identity_verified_at: 2026-08-18
@@ -157,7 +157,7 @@ luna:
   capabilities: [hermes-profile, portable-dev, coding-worker, git-clone-mirror, a008-dev-instance, ollama-qwen3.8, meshcentral-agent, trading-research]
   grants: [hermes-profile, portable-dev, coding-worker, git-clone-mirror, a008-dev-instance, ollama-qwen3.8, meshcentral-agent, trading-research]
   forbidden: [publish, email.send, crm.write, trading.execute, contenthub-render, always-on-power]
-  status: planned
+  status: active
   role: hermes-portable-dev; portable dormant-when-offline machine; caffeinate -d -i -u while powered; Hermes profile "luna"; on-demand coding worker + trading research; A008 dev instance; supply luna-personal grants + fleet-core read-only
   expected_daily_output: on demand
 

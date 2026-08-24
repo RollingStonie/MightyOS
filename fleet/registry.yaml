@@ -2,7 +2,7 @@
 # GENERATED FILE — do not hand-edit.
 # Compiled by tools/fleet_registry/publish.py from A008 registry/fleet-agents.yaml
 # source_commit: 278eb8ad8d5ba1f3aec5c286a8ef707b63c79d2a
-# published_at: 2026-08-23T19:29:46.476150+00:00
+# published_at: 2026-08-24T13:57:33.969203+00:00
 # Edit the source in A008, not this file — hand edits here are drift and will be
 # silently overwritten by the next publish run.
 # ============================================================
@@ -45,6 +45,11 @@
 
 claire:
   device: MacBook M1 Max 32GB
+  # Placement (Kenneth decision 2026-08-24): STATIONARY, 24/7 AT HOME.
+  # Supersedes the older "Claire travels with Kenneth" assumption. Luna is now the
+  # only machine that goes on the go; Claire and Lucy are both always-on home boxes.
+  placement: stationary-home-24x7
+  role: orchestrator / chief-of-staff; root of trust (Infisical, git write, governance)
   tailscale_ip: local
   tailscale: claire.tailnet
   state: ready

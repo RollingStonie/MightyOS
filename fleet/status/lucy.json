@@ -1,14 +1,57 @@
 {
   "agent": "lucy",
-  "last_seen": "2026-08-23T17:15:00Z",
+  "last_seen": "2026-08-24T20:02:00Z",
   "status": "online",
-  "current_task": "fleet bootstrap (post-install)",
-  "model_in_use": "qwen3:32b (20 GB) + qwen3-27b-abliterated (Q5_K, pending install)",
-  "results_today": 0,
-  "errors_today": 0,
-  "session_started": "2026-08-21T01:45:00Z",
-  "tailscale_ip": "100.89.151.8",
-  "macos_version": "26.6.2",
-  "disk_total_tb": 1.8,
-  "heartbeat_source": "claire-manual-init (real loop pending FLEET_WEBHOOK)"
+  "current_task": "mlx-fleet-heartbeat",
+  "model_in_use": "qwen3.8-27b-oq4e-mtp@8000, qwen3.8-27b-uncensored-oq4e@8001, deepseek-v4-flash@8991",
+  "mlx_stack": {
+    "checked_at": "2026-08-24T20:02:00Z",
+    "services": {
+      "omlx_8000": {
+        "port": 8000,
+        "status": "online",
+        "checked_at": "2026-08-24T20:02:00Z",
+        "models": [
+          {
+            "id": "qwen3.8-27b-oq4e-mtp",
+            "owned_by": "omlx",
+            "max_model_len": 262144
+          }
+        ]
+      },
+      "omlx_8001": {
+        "port": 8001,
+        "status": "online",
+        "checked_at": "2026-08-24T20:02:00Z",
+        "models": [
+          {
+            "id": "qwen3.8-27b-uncensored-oq4e",
+            "owned_by": "omlx",
+            "max_model_len": 262144
+          }
+        ]
+      },
+      "ds4_8991": {
+        "port": 8991,
+        "status": "online",
+        "checked_at": "2026-08-24T20:02:00Z",
+        "models": [
+          {
+            "id": "deepseek-v4-flash",
+            "owned_by": "ds4.c",
+            "max_model_len": 65536
+          },
+          {
+            "id": "deepseek-v4-pro",
+            "owned_by": "ds4.c",
+            "max_model_len": 65536
+          }
+        ]
+      }
+    },
+    "online_count": 3,
+    "total_count": 3
+  },
+  "heartbeat_source": "mighty-mlx-heartbeat.py v1",
+  "tailscale_ip": "100.89.151.8"
 }

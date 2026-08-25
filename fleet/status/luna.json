@@ -1,6 +1,6 @@
 {
   "agent": "luna",
-  "last_seen": "2026-08-25T22:41:20Z",
+  "last_seen": "2026-08-25T22:46:24Z",
   "status": "online",
   "current_task": "mlx-fleet-heartbeat",
   "model_in_use": "qwen3.8-27b-oq4e-mtp@8000, qwen3.8-27b-uncensored-oq4e@8001, deepseek-v4-flash@8991",
@@ -12,12 +12,12 @@
   "disk_total_tb": 3.6,
   "heartbeat_source": "mighty-mlx-heartbeat.py v1",
   "mlx_stack": {
-    "checked_at": "2026-08-25T22:41:20Z",
+    "checked_at": "2026-08-25T22:46:24Z",
     "services": {
       "omlx_8000": {
         "port": 8000,
         "status": "online",
-        "checked_at": "2026-08-25T22:41:20Z",
+        "checked_at": "2026-08-25T22:46:24Z",
         "models": [
           {
             "id": "qwen3.8-27b-oq4e-mtp",
@@ -29,7 +29,7 @@
       "omlx_8001": {
         "port": 8001,
         "status": "online",
-        "checked_at": "2026-08-25T22:41:20Z",
+        "checked_at": "2026-08-25T22:46:24Z",
         "models": [
           {
             "id": "qwen3.8-27b-uncensored-oq4e",
@@ -41,7 +41,7 @@
       "ds4_8991": {
         "port": 8991,
         "status": "online",
-        "checked_at": "2026-08-25T22:41:20Z",
+        "checked_at": "2026-08-25T22:46:24Z",
         "models": [
           {
             "id": "deepseek-v4-flash",

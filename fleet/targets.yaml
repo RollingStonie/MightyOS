@@ -22,4 +22,9 @@ ashley:
 
 george:
   queries_per_day: 0          # TBD — pending verification + Slack channel setup (brand-knowledge Slack librarian)
-  offline_alert_minutes: 30
+  # 999 = alerts suppressed, same as brian: george has NO heartbeat mechanism at
+  # all (george-gateway.service exists, george-heartbeat.service does not), so
+  # george.json has been frozen at 2026-08-09 since it was hand-written once.
+  # Nothing can clear this alert until george is actually onboarded — raising it
+  # daily would just be noise. Restore to 30 when a heartbeat unit exists.
+  offline_alert_minutes: 999

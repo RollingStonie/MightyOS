@@ -73,10 +73,54 @@ else
     log "  WARNING: tailscale not in PATH — open /Applications/Tailscale.app and join with key: $TS_KEY"
 fi
 
-# ─── 3. Python 3, Node.js, Chrome, Discord, Slack, Keeper, Docker, pCloud ────
-log "Installing Python, Node.js, and desktop apps..."
+# ─── 3. Python 3, Node.js, Chrome, Discord, Slack, Docker, NordVPN ──────────
+# NB 2026-08-28: keeper-password-manager and pcloud-drive were REMOVED from
+# homebrew-cask. They are now DMG-downloads below in Step 3a (separate flow
+# because hdiutil attach + cp requires sudo and a GUI fallback).
+log "Installing Python, Node.js, and desktop apps (brew-available casks)..."
 brew install python@3.12 node 2>/dev/null || true
-brew install --cask google-chrome discord slack keeper-password-manager nordvpn docker pcloud-drive 2>/dev/null || true
+brew install --cask google-chrome discord slack nordvpn docker 2>/dev/null || true
+
+# ─── 3a. Keeper + pCloud — DMG download (no longer in homebrew-cask) ─────────
+# Keeper: https://www.keepersecurity.com/en_GB/download.html
+# pCloud:  https://www.pcloud.com/downloads.html (also App Store option)
+log "Installing Keeper + pCloud via DMG (no longer in brew)..."
+
+# Keeper — latest Mac DMG, x86 + arm64 universal
+TMPDMG=/tmp/keeper-installer.dmg
+curl -fsSL -o "$TMPDMG" "https://www.keepersecurity.com/desktop_electron/KeeperSetup.dmg" || log "  Keeper DMG download failed — install manually from keepersecurity.com"
+if [[ -f "$TMPDMG" ]]; then
+    hdiutil attach -nobrowse "$TMPDMG" 2>/dev/null
+    KEEPER_APP=$(ls -d "/Volumes/Keeper Installer"*/Keeper.app 2>/dev/null | head -1)
+    [[ -z "$KEEPER_APP" ]] && KEEPER_APP=$(ls -d /Volumes/Keeper*/Keeper*.app 2>/dev/null | head -1)
+    if [[ -n "$KEEPER_APP" ]]; then
+        rsync -a --delete "$KEEPER_APP/" "/Applications/Keeper.app/" 2>/dev/null || cp -R "$KEEPER_APP" /Applications/
+        hdiutil detach "$(dirname "$KEEPER_APP")" 2>/dev/null
+        log "  Keeper installed to /Applications/Keeper.app — log in manually"
+    else
+        log "  Keeper DMG attached but .app not found — check /Volumes"
+    fi
+    rm -f "$TMPDMG"
+fi
+
+# pCloud — latest Mac DMG (universal)
+TMPDMG=/tmp/pcloud-installer.dmg
+curl -fsSL -o "$TMPDMG" "https://www.pcloud.com/how-to-install-pcloud-drive-mac-os-x.html" 2>/dev/null
+# The actual DMG URL changes; fall back to the App Store download page if the direct DMG 404s.
+if [[ -s "$TMPDMG" ]] && file "$TMPDMG" 2>/dev/null | grep -q "Mac OS X.*disk image"; then
+    hdiutil attach -nobrowse "$TMPDMG" 2>/dev/null
+    PCLOUD_APP=$(ls -d /Volumes/pcloud*/pcloud*.app 2>/dev/null | head -1)
+    if [[ -n "$PCLOUD_APP" ]]; then
+        cp -R "$PCLOUD_APP" /Applications/
+        hdiutil detach "$(dirname "$PCLOUD_APP")" 2>/dev/null
+        log "  pCloud installed to /Applications — log in manually, then enable folder mount"
+    else
+        log "  pCloud DMG attached but .app not found — check /Volumes"
+    fi
+    rm -f "$TMPDMG"
+else
+    log "  pCloud direct DMG URL drifted — install manually from pcloud.com/downloads.html or via App Store"
+fi
 
 # ─── 3b. Infisical CLI ────────────────────────────────────────────────────────
 log "Installing Infisical CLI..."
@@ -96,6 +140,71 @@ log "Installing Claude Code CLI..."
 npm install -g @anthropic-ai/claude-code 2>/dev/null || true
 log "Installing Codex..."
 npm install -g @openai/codex 2>/dev/null || true
+
+# ─── 5b. Fleet agent CLI tools (herdr + pi) ─────────────────────────────────
+# Added 2026-08-28 after fleet-machine-state audit surfaced both as gaps on
+# at least one Mac. Reference: ~/.claude/skills/kenneth-fleet/references/fleet-machine-state.md
+log "Installing fleet agent CLI tools (herdr + pi)..."
+
+# `pi` — @earendil-works/pi-coding-agent (verified on Lucy 2026-08-28:
+# /opt/homebrew/bin/pi -> ../lib/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js)
+npm install -g @earendil-works/pi-coding-agent 2>/dev/null || true
+
+# `herdr` — install source confirmed 2026-08-28 (was TODO): herdr.dev, NOT
+# GitHub releases (own product site — https://herdr.dev/docs/install/ also
+# lists Homebrew/mise/Nix as alternatives, but no brew formula/tap found as
+# of this audit, so we use the official installer). Verified already present
+# and working on Claire, Lucy, and Luna (v0.8.2, Mach-O ARM64) — this step
+# just makes it part of the baseline for future Macs + keeps it current.
+# NOTE: this is a curl-pipe-to-sh install (supply-chain caveat noted,
+# accepted since it's Kenneth's own already-trusted binary on 3 machines —
+# revisit if herdr ever ships a pinned/checksummed release).
+if ! command -v herdr >/dev/null 2>&1; then
+  curl -fsSL https://herdr.dev/install.sh | sh 2>/dev/null || true
+fi
+if command -v herdr >/dev/null 2>&1; then
+  log "  ✓ herdr installed ($(herdr --version 2>/dev/null))"
+else
+  log "  ⚠ herdr install failed — see https://herdr.dev/docs/install/ for manual steps"
+fi
+
+# ─── 5c. Fleet menu-bar / monitor apps (Loop, Stats, Core-Monitor, Cue) ──────
+# Added 2026-08-28 fleet-machine-state audit. Pinning these in the canonical
+# baseline so the "Bootstrap? = Y" column in fleet-machine-state.md is true and
+# so future bootstraps install them automatically (currently they're ad-hoc on
+# existing Macs). Reference:
+#   ~/.claude/skills/kenneth-fleet/references/fleet-machine-state.md
+log "Installing fleet menu-bar / monitor apps..."
+
+# Loop (MrKai77/Loop) — brew cask `loop`. Verified Lucy 2026-08-28: v1.4.2 installed
+# 2026-08-21 01:10:30. Homepage: https://github.com/MrKai77/Loop
+brew install --cask loop 2>/dev/null || true
+
+# Stats (exelban/stats) — brew cask `stats`. Verified Lucy 2026-08-28: v3.0.11
+# installed 2026-08-21 01:10:33 (3.0.13 available). Homepage: https://github.com/exelban/stats
+brew install --cask stats 2>/dev/null || true
+
+# Core-Monitor (offyotto/Core-Monitor) — NO brew formula. Latest release DMG.
+# TODO(ken): confirm release asset naming before uncommenting. Provisional pattern:
+#   CORE_MONITOR_REPO="offyotto/Core-Monitor"
+#   curl -fsSL "https://github.com/$CORE_MONITOR_REPO/releases/latest/download/Core-Monitor.dmg" \
+#     -o /tmp/Core-Monitor.dmg && \
+#     hdiutil attach -nobrowse /tmp/Core-Monitor.dmg && \
+#     cp -R "/Volumes/Core Monitor/Core Monitor.app" /Applications/ && \
+#     hdiutil detach "/Volumes/Core Monitor"
+log "  Core-Monitor: install command placeholder — TODO confirm release asset name"
+
+# Cue (Blueturboguy07/cue) — NOT the cuelang.org CUE config language (that is a
+# DIFFERENT package — brew `cue` IS the config language, do NOT uninstall it).
+# Blueturboguy07/cue is a separate Swift menu-bar app on GitHub, no brew formula.
+# TODO(ken): confirm the release asset URL before uncommenting. Provisional pattern:
+#   CUE_REPO="Blueturboguy07/cue"
+#   curl -fsSL "https://github.com/$CUE_REPO/releases/latest/download/cue.dmg" \
+#     -o /tmp/cue.dmg && \
+#     hdiutil attach -nobrowse /tmp/cue.dmg && \
+#     cp -R "/Volumes/Cue/Cue.app" /Applications/ && \
+#     hdiutil detach "/Volumes/Cue"
+log "  Blueturboguy07/cue: install source unconfirmed — TODO"
 
 # ─── 6. OpenSSH (already present on macOS) + Kenneth's key ───────────────────
 log "Configuring SSH..."
@@ -275,6 +384,17 @@ if [[ -n "$DISCORD_WEBHOOK" ]]; then
         log "  (Discord post failed — set FLEET_WEBHOOK env var later)"
 fi
 
+# ─── 13. Retired apps — auto-uninstall on next bootstrap ─────────────────────
+# ActivityWatch + boringNotch retired 2026-08-28 — bad UX, replaced by Stats (exelban/stats)
+# + Loop (MrKai77/Loop). Bootstrap will uninstall them so they don't silently persist
+# on future Macs. Manual one-liner if you need to uninstall on an existing Mac:
+#   brew uninstall --cask activitywatch
+#   rm -rf /Applications/boringNotch.app
+# Workflow reference: ~/.claude/skills/kenneth-fleet/references/retire.md
+log "Removing retired apps (ActivityWatch + boringNotch)..."
+brew uninstall --cask activitywatch 2>/dev/null || true
+rm -rf /Applications/boringNotch.app 2>/dev/null || true
+
 # ─── Done ────────────────────────────────────────────────────────────────────
 log ""
 log "════════════════════════════════════════════════════════"
@@ -290,9 +410,12 @@ log "  Keeper:      installed — open and log in manually"
 log "  NordVPN:     installed — open and log in manually"
 log "  Docker:      installed (/Applications/Docker.app) — open once to finish setup"
 log "  pCloud:      installed — open and log in manually, then enable folder mount"
+log "  Loop:        installed (/Applications/Loop.app)"
+log "  Stats:       installed (/Applications/Stats.app)"
 log "  Infisical:   $(command -v infisical || echo 'check brew')"
 log "  Claude Code: $(npm list -g @anthropic-ai/claude-code --depth 0 2>/dev/null | grep claude || echo 'check npm')"
 log "  Codex:       $(npm list -g @openai/codex --depth 0 2>/dev/null | grep codex || echo 'check npm')"
+log "  Retired:     ActivityWatch + boringNotch removed"
 log ""
 log "  Next steps:"
 log "  1. Copy secrets from Keeper → $HOME/.hermes/secrets/"

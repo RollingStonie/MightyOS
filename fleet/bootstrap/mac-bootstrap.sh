@@ -97,6 +97,27 @@ npm install -g @anthropic-ai/claude-code 2>/dev/null || true
 log "Installing Codex..."
 npm install -g @openai/codex 2>/dev/null || true
 
+# ─── 5b. Fleet agent CLI tools (herdr + pi) ─────────────────────────────────
+# Added 2026-08-28 after fleet-machine-state audit surfaced both as gaps on
+# at least one Mac. Reference: ~/.claude/skills/kenneth-fleet/references/fleet-machine-state.md
+log "Installing fleet agent CLI tools (herdr + pi)..."
+
+# `pi` — @earendil-works/pi-coding-agent (verified on Lucy 2026-08-28:
+# /opt/homebrew/bin/pi -> ../lib/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js)
+npm install -g @earendil-works/pi-coding-agent 2>/dev/null || true
+
+# `herdr` — TODO(ken): confirm install source. Known facts (2026-08-28 audit):
+#   - Binary: ~/.local/bin/herdr (Lucy + Luna), Mach-O 64-bit ARM64, 18.9MB, dated Aug 24
+#   - Built with clap-rs (Rust CLI); no project-specific GitHub URL embedded in strings
+#   - Not a pip package (pip show herdr → not found), not a brew formula
+#   - Most likely: `cargo install herdr` from a github.com/<owner>/herdr repo, OR
+#     a downloaded release binary curl-piped into ~/.local/bin/
+# Uncomment + set HERDR_REPO once the source repo is confirmed:
+#   HERDR_REPO="github.com/<owner>/herdr"
+#   curl -fsSL "https://$HERDR_REPO/releases/latest/download/herdr-$(uname -m)-apple-darwin" \
+#     -o "$HOME/.local/bin/herdr" && chmod +x "$HOME/.local/bin/herdr"
+log "  herdr: install source unconfirmed — see TODO above this line. Skipping."
+
 # ─── 6. OpenSSH (already present on macOS) + Kenneth's key ───────────────────
 log "Configuring SSH..."
 mkdir -p "$HOME/.ssh"

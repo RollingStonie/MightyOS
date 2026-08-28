@@ -73,10 +73,54 @@ else
     log "  WARNING: tailscale not in PATH — open /Applications/Tailscale.app and join with key: $TS_KEY"
 fi
 
-# ─── 3. Python 3, Node.js, Chrome, Discord, Slack, Keeper, Docker, pCloud ────
-log "Installing Python, Node.js, and desktop apps..."
+# ─── 3. Python 3, Node.js, Chrome, Discord, Slack, Docker, NordVPN ──────────
+# NB 2026-08-28: keeper-password-manager and pcloud-drive were REMOVED from
+# homebrew-cask. They are now DMG-downloads below in Step 3a (separate flow
+# because hdiutil attach + cp requires sudo and a GUI fallback).
+log "Installing Python, Node.js, and desktop apps (brew-available casks)..."
 brew install python@3.12 node 2>/dev/null || true
-brew install --cask google-chrome discord slack keeper-password-manager nordvpn docker pcloud-drive 2>/dev/null || true
+brew install --cask google-chrome discord slack nordvpn docker 2>/dev/null || true
+
+# ─── 3a. Keeper + pCloud — DMG download (no longer in homebrew-cask) ─────────
+# Keeper: https://www.keepersecurity.com/en_GB/download.html
+# pCloud:  https://www.pcloud.com/downloads.html (also App Store option)
+log "Installing Keeper + pCloud via DMG (no longer in brew)..."
+
+# Keeper — latest Mac DMG, x86 + arm64 universal
+TMPDMG=/tmp/keeper-installer.dmg
+curl -fsSL -o "$TMPDMG" "https://www.keepersecurity.com/desktop_electron/KeeperSetup.dmg" || log "  Keeper DMG download failed — install manually from keepersecurity.com"
+if [[ -f "$TMPDMG" ]]; then
+    hdiutil attach -nobrowse "$TMPDMG" 2>/dev/null
+    KEEPER_APP=$(ls -d "/Volumes/Keeper Installer"*/Keeper.app 2>/dev/null | head -1)
+    [[ -z "$KEEPER_APP" ]] && KEEPER_APP=$(ls -d /Volumes/Keeper*/Keeper*.app 2>/dev/null | head -1)
+    if [[ -n "$KEEPER_APP" ]]; then
+        rsync -a --delete "$KEEPER_APP/" "/Applications/Keeper.app/" 2>/dev/null || cp -R "$KEEPER_APP" /Applications/
+        hdiutil detach "$(dirname "$KEEPER_APP")" 2>/dev/null
+        log "  Keeper installed to /Applications/Keeper.app — log in manually"
+    else
+        log "  Keeper DMG attached but .app not found — check /Volumes"
+    fi
+    rm -f "$TMPDMG"
+fi
+
+# pCloud — latest Mac DMG (universal)
+TMPDMG=/tmp/pcloud-installer.dmg
+curl -fsSL -o "$TMPDMG" "https://www.pcloud.com/how-to-install-pcloud-drive-mac-os-x.html" 2>/dev/null
+# The actual DMG URL changes; fall back to the App Store download page if the direct DMG 404s.
+if [[ -s "$TMPDMG" ]] && file "$TMPDMG" 2>/dev/null | grep -q "Mac OS X.*disk image"; then
+    hdiutil attach -nobrowse "$TMPDMG" 2>/dev/null
+    PCLOUD_APP=$(ls -d /Volumes/pcloud*/pcloud*.app 2>/dev/null | head -1)
+    if [[ -n "$PCLOUD_APP" ]]; then
+        cp -R "$PCLOUD_APP" /Applications/
+        hdiutil detach "$(dirname "$PCLOUD_APP")" 2>/dev/null
+        log "  pCloud installed to /Applications — log in manually, then enable folder mount"
+    else
+        log "  pCloud DMG attached but .app not found — check /Volumes"
+    fi
+    rm -f "$TMPDMG"
+else
+    log "  pCloud direct DMG URL drifted — install manually from pcloud.com/downloads.html or via App Store"
+fi
 
 # ─── 3b. Infisical CLI ────────────────────────────────────────────────────────
 log "Installing Infisical CLI..."

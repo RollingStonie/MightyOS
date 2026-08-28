@@ -137,9 +137,37 @@ log "Installing pip packages..."
 
 # ─── 5. Claude Code CLI + Codex ──────────────────────────────────────────────
 log "Installing Claude Code CLI..."
-npm install -g @anthropic-ai/claude-code 2>/dev/null || true
+# Allow @anthropic-ai/claude-code postinstall scripts so the platform-native
+# binary (claude-code-darwin-arm64) actually downloads. Without this,
+# `claude --version` errors with "claude native binary not installed" and
+# every shell function wrapping claude (m3-1 / m3-2 / fcc-claude) breaks too.
+# The --allow-scripts flag covers this install; we also write to ~/.npmrc
+# below so future `npm update -g` keeps working (npm v9+ blocks postinstall
+# by default unless the package is in allow-scripts).
+npm install -g --allow-scripts=@anthropic-ai/claude-code,@anthropic-ai/claude-code-darwin-arm64 \
+    @anthropic-ai/claude-code 2>/dev/null || true
 log "Installing Codex..."
 npm install -g @openai/codex 2>/dev/null || true
+
+# Persist allow-scripts in ~/.npmrc so future npm update -g doesn't silently
+# break claude-code (and m3-1/m3-2 wrappers). Merge with any existing list —
+# never clobber the user's pre-existing entries.
+if [[ -f "$HOME/.npmrc" ]]; then
+    EXISTING=$(grep "^allow-scripts=" "$HOME/.npmrc" | head -1 | cut -d= -f2-)
+    for pkg in "@anthropic-ai/claude-code" "@anthropic-ai/claude-code-darwin-arm64"; do
+        if ! echo ",$EXISTING," | grep -q ",$pkg,"; then
+            EXISTING="${EXISTING:+$EXISTING,}$pkg"
+        fi
+    done
+    if [[ "$EXISTING" == *"@anthropic-ai/claude-code"* ]]; then
+        # Replace or append the allow-scripts line
+        if grep -q "^allow-scripts=" "$HOME/.npmrc"; then
+            sed -i.bak-npmrc-20260828 "s|^allow-scripts=.*|allow-scripts=$EXISTING|" "$HOME/.npmrc"
+        else
+            echo "allow-scripts=$EXISTING" >> "$HOME/.npmrc"
+        fi
+    fi
+fi
 
 # ─── 5b. Fleet agent CLI tools (herdr + pi) ─────────────────────────────────
 # Added 2026-08-28 after fleet-machine-state audit surfaced both as gaps on

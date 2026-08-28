@@ -1,8 +1,8 @@
 # ============================================================
 # GENERATED FILE — do not hand-edit.
 # Compiled by tools/fleet_registry/publish.py from A008 registry/fleet-agents.yaml
-# source_commit: b4b2d59084a712ffe9b21b82aedcf048378bef40
-# published_at: 2026-08-26T13:54:47.434519+00:00
+# source_commit: d4556eb61633851caf1171ee9fbfae0dc7fe73a6
+# published_at: 2026-08-28T15:19:33.350943+00:00
 # Edit the source in A008, not this file — hand edits here are drift and will be
 # silently overwritten by the next publish run.
 # ============================================================
@@ -142,7 +142,7 @@ lucy:
   discord_identity: lucy-bot
   discord_app_id: 1529820504678989885
   discord_identity_verified_at: 2026-08-18
-  infisical_identity: lucy-runtime     # planned — INFRA-01
+  infisical_identity: lucy-runtime     # provisioned 2026-08-26; org identity, Fleet Core Viewer (custom path RBAC unavailable on current plan)
   capabilities: [contenthub-creator, contenthub-scanner, contenthub-render-worker, qmd-runtime, hermes-profile, a008-dev-instance, hannah-ssh-access, ollama-qwen3.8, meshcentral-agent, heavy-compute]
   grants: [contenthub-creator, contenthub-scanner, contenthub-render-worker, qmd-runtime, hermes-profile, a008-dev-instance, hannah-ssh-access, ollama-qwen3.8, meshcentral-agent, heavy-compute]
   forbidden: [publish, email.send, crm.write, trading.execute, portable-sleep-mode, caffeinate-wrapper]

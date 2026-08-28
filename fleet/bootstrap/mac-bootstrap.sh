@@ -230,6 +230,58 @@ if [[ ! -d /Applications/cue.app ]]; then
     fi
 fi
 
+# ─── 5d. Meeting copilot (Cluely) + AI assistant (Handy) ───────────────────
+# Kenneth decision 2026-08-28: install these alongside the existing menu-bar
+# apps so every future fleet Mac has them. Both are signed/notarized DMG
+# downloads from GitHub Releases.
+#
+# Cluely (Natively-AI-assistant/natively-cluely-ai-assistant) — AI meeting
+# copilot. v2.8.8 (arm64, ~85MB zip). Note: ships as `Natively.app` in the
+# zip, NOT `Cluely.app` — preserve that name when installing. Homepage:
+# https://github.com/Natively-AI-assistant/natively-cluely-ai-assistant
+if [[ ! -d /Applications/Natively.app ]]; then
+    TMPZIP=/tmp/cluely-arm64.zip
+    CLUELY_URL=$(curl -fsSL "https://api.github.com/repos/Natively-AI-assistant/natively-cluely-ai-assistant/releases/latest" 2>/dev/null | \
+        python3 -c "import json,sys;d=json.load(sys.stdin);print(next((a['browser_download_url'] for a in d.get('assets',[]) if 'arm64' in a['name'] and 'mac' in a['name']),''))" 2>/dev/null)
+    if [[ -n "$CLUELY_URL" ]]; then
+        curl -fsSL -L -o "$TMPZIP" "$CLUELY_URL" 2>/dev/null
+        if [[ -s "$TMPZIP" ]]; then
+            unzip -o "$TMPZIP" -d /tmp/ 2>/dev/null
+            if [[ -d /tmp/Natively.app ]]; then
+                cp -R /tmp/Natively.app /Applications/Natively.app
+                log "  Cluely installed (/Applications/Natively.app) — log in on first launch"
+            fi
+            rm -f "$TMPZIP"
+        fi
+    else
+        log "  Cluely: could not discover arm64 release URL — install manually from https://github.com/Natively-AI-assistant/natively-cluely-ai-assistant/releases"
+    fi
+fi
+
+# Handy (cjpais/handy) — AI desktop assistant. v0.9.6 (arm64 DMG). Homepage:
+# https://github.com/cjpais/handy
+if [[ ! -d /Applications/Handy.app ]]; then
+    TMPDMG=/tmp/handy-arm64.dmg
+    HANDY_URL=$(curl -fsSL "https://api.github.com/repos/cjpais/handy/releases/latest" 2>/dev/null | \
+        python3 -c "import json,sys;d=json.load(sys.stdin);print(next((a['browser_download_url'] for a in d.get('assets',[]) if 'aarch64' in a['name'] and 'dmg' in a['name']),''))" 2>/dev/null)
+    if [[ -n "$HANDY_URL" ]]; then
+        curl -fsSL -L -o "$TMPDMG" "$HANDY_URL" 2>/dev/null
+        if [[ -s "$TMPDMG" ]]; then
+            hdiutil attach -nobrowse "$TMPDMG" 2>/dev/null
+            HANDY_APP=$(ls -d /Volumes/Handy*/Handy.app 2>/dev/null | head -1)
+            [[ -z "$HANDY_APP" ]] && HANDY_APP=$(ls -d /Volumes/Handy*/handy.app 2>/dev/null | head -1)
+            if [[ -n "$HANDY_APP" ]]; then
+                cp -R "$HANDY_APP" /Applications/Handy.app
+                hdiutil detach "$(dirname "$HANDY_APP")" 2>/dev/null
+                log "  Handy installed (/Applications/Handy.app) — log in on first launch"
+            fi
+            rm -f "$TMPDMG"
+        fi
+    else
+        log "  Handy: could not discover aarch64 DMG URL — install manually from https://github.com/cjpais/handy/releases"
+    fi
+fi
+
 # ─── 6. OpenSSH (already present on macOS) + Kenneth's key ───────────────────
 log "Configuring SSH..."
 mkdir -p "$HOME/.ssh"

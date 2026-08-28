@@ -73,14 +73,29 @@ else
     log "  WARNING: tailscale not in PATH — open /Applications/Tailscale.app and join with key: $TS_KEY"
 fi
 
-# ─── 3. Python 3, Node.js, Chrome, Discord, Slack, Docker, NordVPN, Keeper ───
+# ─── 3. Python 3, Node.js, Chrome + 41 brew casks ──────────────────────────
 # NB 2026-08-28: keeper-password-manager was REMOVED from homebrew-cask at one
 # point, fell back to DMG in Step 3a. After a `brew update` on 2026-08-28 it's
 # BACK as a cask (v18.6.0) — re-pinned here. pcloud-drive remains REMOVED and
 # must use the DMG fallback in Step 3a below.
+#
+# 2026-08-28 fleet-machine-state audit found 33 common casks (present on Lucy +
+# Luna) that were NOT in the baseline → every future Mac was missing them.
+# Pinned here so the next bootstrap auto-installs. Reference:
+#   ~/.claude/skills/kenneth-fleet/references/fleet-machine-state.md
+# Total: 8 baseline + 33 newly-pinned = 41 casks in one install line.
 log "Installing Python, Node.js, and desktop apps (brew-available casks)..."
 brew install python@3.12 node 2>/dev/null || true
-brew install --cask google-chrome discord slack nordvpn docker keeper-password-manager 2>/dev/null || true
+brew install --cask \
+    google-chrome discord slack nordvpn docker keeper-password-manager \
+    loop stats \
+    alt-tab antigravity-cli antigravity-ide brave-browser codeedit \
+    dbeaver-community deskflow devtoys eqmac espanso finicky \
+    freeplane fsnotes hammerspoon iina imageoptim iterm2 \
+    karabiner-elements keepingyouawake localsend logseq lulu \
+    maccy meetingbar mitmproxy mole-app monitorcontrol numi \
+    obsidian only-switch pika super-productivity thaw trex \
+    2>/dev/null || true
 
 # ─── 3a. pCloud — DMG download (removed from homebrew-cask as of 2026-08-28) ─
 # Keeper: now in brew (Step 3 above, no longer needs DMG fallback).

@@ -118,6 +118,44 @@ npm install -g @earendil-works/pi-coding-agent 2>/dev/null || true
 #     -o "$HOME/.local/bin/herdr" && chmod +x "$HOME/.local/bin/herdr"
 log "  herdr: install source unconfirmed — see TODO above this line. Skipping."
 
+# ─── 5c. Fleet menu-bar / monitor apps (Loop, Stats, Core-Monitor, Cue) ──────
+# Added 2026-08-28 fleet-machine-state audit. Pinning these in the canonical
+# baseline so the "Bootstrap? = Y" column in fleet-machine-state.md is true and
+# so future bootstraps install them automatically (currently they're ad-hoc on
+# existing Macs). Reference:
+#   ~/.claude/skills/kenneth-fleet/references/fleet-machine-state.md
+log "Installing fleet menu-bar / monitor apps..."
+
+# Loop (MrKai77/Loop) — brew cask `loop`. Verified Lucy 2026-08-28: v1.4.2 installed
+# 2026-08-21 01:10:30. Homepage: https://github.com/MrKai77/Loop
+brew install --cask loop 2>/dev/null || true
+
+# Stats (exelban/stats) — brew cask `stats`. Verified Lucy 2026-08-28: v3.0.11
+# installed 2026-08-21 01:10:33 (3.0.13 available). Homepage: https://github.com/exelban/stats
+brew install --cask stats 2>/dev/null || true
+
+# Core-Monitor (offyotto/Core-Monitor) — NO brew formula. Latest release DMG.
+# TODO(ken): confirm release asset naming before uncommenting. Provisional pattern:
+#   CORE_MONITOR_REPO="offyotto/Core-Monitor"
+#   curl -fsSL "https://github.com/$CORE_MONITOR_REPO/releases/latest/download/Core-Monitor.dmg" \
+#     -o /tmp/Core-Monitor.dmg && \
+#     hdiutil attach -nobrowse /tmp/Core-Monitor.dmg && \
+#     cp -R "/Volumes/Core Monitor/Core Monitor.app" /Applications/ && \
+#     hdiutil detach "/Volumes/Core Monitor"
+log "  Core-Monitor: install command placeholder — TODO confirm release asset name"
+
+# Cue (Blueturboguy07/cue) — NOT the cuelang.org CUE config language (that is a
+# DIFFERENT package — brew `cue` IS the config language, do NOT uninstall it).
+# Blueturboguy07/cue is a separate Swift menu-bar app on GitHub, no brew formula.
+# TODO(ken): confirm the release asset URL before uncommenting. Provisional pattern:
+#   CUE_REPO="Blueturboguy07/cue"
+#   curl -fsSL "https://github.com/$CUE_REPO/releases/latest/download/cue.dmg" \
+#     -o /tmp/cue.dmg && \
+#     hdiutil attach -nobrowse /tmp/cue.dmg && \
+#     cp -R "/Volumes/Cue/Cue.app" /Applications/ && \
+#     hdiutil detach "/Volumes/Cue"
+log "  Blueturboguy07/cue: install source unconfirmed — TODO"
+
 # ─── 6. OpenSSH (already present on macOS) + Kenneth's key ───────────────────
 log "Configuring SSH..."
 mkdir -p "$HOME/.ssh"
@@ -296,6 +334,17 @@ if [[ -n "$DISCORD_WEBHOOK" ]]; then
         log "  (Discord post failed — set FLEET_WEBHOOK env var later)"
 fi
 
+# ─── 13. Retired apps — auto-uninstall on next bootstrap ─────────────────────
+# ActivityWatch + boringNotch retired 2026-08-28 — bad UX, replaced by Stats (exelban/stats)
+# + Loop (MrKai77/Loop). Bootstrap will uninstall them so they don't silently persist
+# on future Macs. Manual one-liner if you need to uninstall on an existing Mac:
+#   brew uninstall --cask activitywatch
+#   rm -rf /Applications/boringNotch.app
+# Workflow reference: ~/.claude/skills/kenneth-fleet/references/retire.md
+log "Removing retired apps (ActivityWatch + boringNotch)..."
+brew uninstall --cask activitywatch 2>/dev/null || true
+rm -rf /Applications/boringNotch.app 2>/dev/null || true
+
 # ─── Done ────────────────────────────────────────────────────────────────────
 log ""
 log "════════════════════════════════════════════════════════"
@@ -311,9 +360,12 @@ log "  Keeper:      installed — open and log in manually"
 log "  NordVPN:     installed — open and log in manually"
 log "  Docker:      installed (/Applications/Docker.app) — open once to finish setup"
 log "  pCloud:      installed — open and log in manually, then enable folder mount"
+log "  Loop:        installed (/Applications/Loop.app)"
+log "  Stats:       installed (/Applications/Stats.app)"
 log "  Infisical:   $(command -v infisical || echo 'check brew')"
 log "  Claude Code: $(npm list -g @anthropic-ai/claude-code --depth 0 2>/dev/null | grep claude || echo 'check npm')"
 log "  Codex:       $(npm list -g @openai/codex --depth 0 2>/dev/null | grep codex || echo 'check npm')"
+log "  Retired:     ActivityWatch + boringNotch removed"
 log ""
 log "  Next steps:"
 log "  1. Copy secrets from Keeper → $HOME/.hermes/secrets/"

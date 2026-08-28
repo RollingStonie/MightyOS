@@ -1,8 +1,8 @@
 {
   "agent": "ashley",
-  "last_seen": "2026-08-28T03:04:32Z",
+  "last_seen": "2026-08-28T03:34:35Z",
   "status": "online",
-  "current_task": "auto-detected: /root/.local/share/pipx/venvs/hermes-agent/bin/python -m finn.runs --profile realtime",
+  "current_task": "auto-detected: /usr/bin/python3 /home/kenneth/hermes/heartbeat.py --loop",
   "model_in_use": "deepseek-v4-flash",
   "results_today": 0,
   "errors_today": 0,

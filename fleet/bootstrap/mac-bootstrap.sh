@@ -446,11 +446,17 @@ fi
 # charge limiting; the battery.app menu bar icon was cosmetic duplication.
 # Auto-uninstalled on next bootstrap. Manual one-liner:
 #   brew uninstall --cask battery
-log "Removing retired apps (ActivityWatch + boringNotch + battery)..."
+#
+# AltTab (alt-tab cask) retired 2026-08-28 — replaced by Hammerspoon + the
+# macOS built-in Cmd+Tab (which AltTab was overlaying). Auto-uninstalled on
+# next bootstrap to keep AltTab from coming back on future fleet Macs.
+log "Removing retired apps (ActivityWatch + boringNotch + battery + AltTab)..."
 brew uninstall --cask activitywatch 2>/dev/null || true
 rm -rf /Applications/boringNotch.app 2>/dev/null || true
 brew uninstall --cask battery 2>/dev/null || true
 rm -rf /Applications/battery.app 2>/dev/null || true
+brew uninstall --cask alt-tab 2>/dev/null || true
+rm -rf "/Applications/AltTab.app" 2>/dev/null || true
 
 # ─── Done ────────────────────────────────────────────────────────────────────
 log ""

@@ -150,17 +150,23 @@ log "Installing fleet agent CLI tools (herdr + pi)..."
 # /opt/homebrew/bin/pi -> ../lib/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js)
 npm install -g @earendil-works/pi-coding-agent 2>/dev/null || true
 
-# `herdr` — TODO(ken): confirm install source. Known facts (2026-08-28 audit):
-#   - Binary: ~/.local/bin/herdr (Lucy + Luna), Mach-O 64-bit ARM64, 18.9MB, dated Aug 24
-#   - Built with clap-rs (Rust CLI); no project-specific GitHub URL embedded in strings
-#   - Not a pip package (pip show herdr → not found), not a brew formula
-#   - Most likely: `cargo install herdr` from a github.com/<owner>/herdr repo, OR
-#     a downloaded release binary curl-piped into ~/.local/bin/
-# Uncomment + set HERDR_REPO once the source repo is confirmed:
-#   HERDR_REPO="github.com/<owner>/herdr"
-#   curl -fsSL "https://$HERDR_REPO/releases/latest/download/herdr-$(uname -m)-apple-darwin" \
-#     -o "$HOME/.local/bin/herdr" && chmod +x "$HOME/.local/bin/herdr"
-log "  herdr: install source unconfirmed — see TODO above this line. Skipping."
+# `herdr` — install source confirmed 2026-08-28 (was TODO): herdr.dev, NOT
+# GitHub releases (own product site — https://herdr.dev/docs/install/ also
+# lists Homebrew/mise/Nix as alternatives, but no brew formula/tap found as
+# of this audit, so we use the official installer). Verified already present
+# and working on Claire, Lucy, and Luna (v0.8.2, Mach-O ARM64) — this step
+# just makes it part of the baseline for future Macs + keeps it current.
+# NOTE: this is a curl-pipe-to-sh install (supply-chain caveat noted,
+# accepted since it's Kenneth's own already-trusted binary on 3 machines —
+# revisit if herdr ever ships a pinned/checksummed release).
+if ! command -v herdr >/dev/null 2>&1; then
+  curl -fsSL https://herdr.dev/install.sh | sh 2>/dev/null || true
+fi
+if command -v herdr >/dev/null 2>&1; then
+  log "  ✓ herdr installed ($(herdr --version 2>/dev/null))"
+else
+  log "  ⚠ herdr install failed — see https://herdr.dev/docs/install/ for manual steps"
+fi
 
 # ─── 5c. Fleet menu-bar / monitor apps (Loop, Stats, Core-Monitor, Cue) ──────
 # Added 2026-08-28 fleet-machine-state audit. Pinning these in the canonical

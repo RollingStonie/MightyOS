@@ -249,6 +249,32 @@ if [[ "${SKIP_OLLAMA:-0}" != "1" ]]; then
     fi
 fi
 
+# ─── 7b. batt — battery charge-limit + calibration (CLI + root daemon) ───────
+# Kenneth decision 2026-08-28: use batt (CLI/daemon) alone; battery.app (casks)
+# was retired in Step 13. Reference: ~/.claude/skills/kenneth-battery-skill
+# (the canonical source for cadence, limit, and known `batt schedule show` bug).
+log "Setting up batt (battery charge-limit daemon)..."
+if ! command -v batt >/dev/null 2>&1; then
+    brew install batt 2>/dev/null || true
+fi
+# Start batt as a root-owned LaunchDaemon so it actually enforces the limit.
+# Requires passwordless sudo OR one-time manual paste. If sudo needs a password,
+# the brew command below will silently fail — run the line by hand once on the
+# Mac and re-run the bootstrap.
+if command -v batt >/dev/null 2>&1; then
+    sudo -n brew services start batt 2>/dev/null || \
+        log "  ⚠ batt installed but sudo brew services start failed — run manually: sudo brew services start batt"
+    # Enforce the canonical 80% upper / 78% lower limit. Idempotent.
+    batt limit 80 >/dev/null 2>&1 || true
+    # NB: calibration schedule is NOT auto-set per Kenneth's "same set up as
+    # Claire" instruction 2026-08-28. Claire's schedule is currently disabled
+    # (per `batt status`). To re-enable bi-weekly (every 1st + 15th @ 10am):
+    #   batt schedule '0 10 1,15 * *'
+    # Verify with `batt status` (NEVER `batt schedule show` — that destroys
+    # the schedule per the skill).
+    log "  batt installed + limit set to 80% (calibration schedule disabled by default)"
+fi
+
 # ─── 8. Download agent scripts ───────────────────────────────────────────────
 log "Downloading agent scripts..."
 for f in heartbeat.py agent_bot.py lead_watcher.py twenty_client.py push_leads_to_twenty.py; do
@@ -400,9 +426,16 @@ fi
 #   brew uninstall --cask activitywatch
 #   rm -rf /Applications/boringNotch.app
 # Workflow reference: ~/.claude/skills/kenneth-fleet/references/retire.md
-log "Removing retired apps (ActivityWatch + boringNotch)..."
+#
+# battery (cask) retired 2026-08-28 — Kenneth decision: use batt alone for
+# charge limiting; the battery.app menu bar icon was cosmetic duplication.
+# Auto-uninstalled on next bootstrap. Manual one-liner:
+#   brew uninstall --cask battery
+log "Removing retired apps (ActivityWatch + boringNotch + battery)..."
 brew uninstall --cask activitywatch 2>/dev/null || true
 rm -rf /Applications/boringNotch.app 2>/dev/null || true
+brew uninstall --cask battery 2>/dev/null || true
+rm -rf /Applications/battery.app 2>/dev/null || true
 
 # ─── Done ────────────────────────────────────────────────────────────────────
 log ""

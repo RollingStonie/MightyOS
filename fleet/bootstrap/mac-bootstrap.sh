@@ -83,7 +83,7 @@ fi
 # Luna) that were NOT in the baseline → every future Mac was missing them.
 # Pinned here so the next bootstrap auto-installs. Reference:
 #   ~/.claude/skills/kenneth-fleet/references/fleet-machine-state.md
-# Total: 8 baseline + 33 newly-pinned = 41 casks in one install line.
+# Total: 8 baseline + 33 newly-pinned + macshot (2026-08-28) = 42 casks in one install line.
 log "Installing Python, Node.js, and desktop apps (brew-available casks)..."
 brew install python@3.12 node 2>/dev/null || true
 brew install --cask \
@@ -93,7 +93,7 @@ brew install --cask \
     dbeaver-community deskflow devtoys eqmac espanso finicky \
     freeplane fsnotes hammerspoon iina imageoptim iterm2 \
     karabiner-elements keepingyouawake localsend logseq lulu \
-    maccy meetingbar mitmproxy mole-app monitorcontrol numi \
+    maccy macshot meetingbar mitmproxy mole-app monitorcontrol numi \
     obsidian only-switch pika super-productivity thaw trex \
     2>/dev/null || true
 

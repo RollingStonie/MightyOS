@@ -73,35 +73,20 @@ else
     log "  WARNING: tailscale not in PATH — open /Applications/Tailscale.app and join with key: $TS_KEY"
 fi
 
-# ─── 3. Python 3, Node.js, Chrome, Discord, Slack, Docker, NordVPN ──────────
-# NB 2026-08-28: keeper-password-manager and pcloud-drive were REMOVED from
-# homebrew-cask. They are now DMG-downloads below in Step 3a (separate flow
-# because hdiutil attach + cp requires sudo and a GUI fallback).
+# ─── 3. Python 3, Node.js, Chrome, Discord, Slack, Docker, NordVPN, Keeper ───
+# NB 2026-08-28: keeper-password-manager was REMOVED from homebrew-cask at one
+# point, fell back to DMG in Step 3a. After a `brew update` on 2026-08-28 it's
+# BACK as a cask (v18.6.0) — re-pinned here. pcloud-drive remains REMOVED and
+# must use the DMG fallback in Step 3a below.
 log "Installing Python, Node.js, and desktop apps (brew-available casks)..."
 brew install python@3.12 node 2>/dev/null || true
-brew install --cask google-chrome discord slack nordvpn docker 2>/dev/null || true
+brew install --cask google-chrome discord slack nordvpn docker keeper-password-manager 2>/dev/null || true
 
-# ─── 3a. Keeper + pCloud — DMG download (no longer in homebrew-cask) ─────────
-# Keeper: https://www.keepersecurity.com/en_GB/download.html
-# pCloud:  https://www.pcloud.com/downloads.html (also App Store option)
-log "Installing Keeper + pCloud via DMG (no longer in brew)..."
-
-# Keeper — latest Mac DMG, x86 + arm64 universal
-TMPDMG=/tmp/keeper-installer.dmg
-curl -fsSL -o "$TMPDMG" "https://www.keepersecurity.com/desktop_electron/KeeperSetup.dmg" || log "  Keeper DMG download failed — install manually from keepersecurity.com"
-if [[ -f "$TMPDMG" ]]; then
-    hdiutil attach -nobrowse "$TMPDMG" 2>/dev/null
-    KEEPER_APP=$(ls -d "/Volumes/Keeper Installer"*/Keeper.app 2>/dev/null | head -1)
-    [[ -z "$KEEPER_APP" ]] && KEEPER_APP=$(ls -d /Volumes/Keeper*/Keeper*.app 2>/dev/null | head -1)
-    if [[ -n "$KEEPER_APP" ]]; then
-        rsync -a --delete "$KEEPER_APP/" "/Applications/Keeper.app/" 2>/dev/null || cp -R "$KEEPER_APP" /Applications/
-        hdiutil detach "$(dirname "$KEEPER_APP")" 2>/dev/null
-        log "  Keeper installed to /Applications/Keeper.app — log in manually"
-    else
-        log "  Keeper DMG attached but .app not found — check /Volumes"
-    fi
-    rm -f "$TMPDMG"
-fi
+# ─── 3a. pCloud — DMG download (removed from homebrew-cask as of 2026-08-28) ─
+# Keeper: now in brew (Step 3 above, no longer needs DMG fallback).
+# pCloud: https://www.pcloud.com/downloads.html (also App Store option).
+# (Legacy Keeper DMG block removed 2026-08-28 — see git history if needed.)
+log "Installing pCloud via DMG (removed from brew)..."
 
 # pCloud — latest Mac DMG (universal)
 TMPDMG=/tmp/pcloud-installer.dmg
@@ -184,27 +169,51 @@ brew install --cask loop 2>/dev/null || true
 # installed 2026-08-21 01:10:33 (3.0.13 available). Homepage: https://github.com/exelban/stats
 brew install --cask stats 2>/dev/null || true
 
-# Core-Monitor (offyotto/Core-Monitor) — NO brew formula. Latest release DMG.
-# TODO(ken): confirm release asset naming before uncommenting. Provisional pattern:
-#   CORE_MONITOR_REPO="offyotto/Core-Monitor"
-#   curl -fsSL "https://github.com/$CORE_MONITOR_REPO/releases/latest/download/Core-Monitor.dmg" \
-#     -o /tmp/Core-Monitor.dmg && \
-#     hdiutil attach -nobrowse /tmp/Core-Monitor.dmg && \
-#     cp -R "/Volumes/Core Monitor/Core Monitor.app" /Applications/ && \
-#     hdiutil detach "/Volumes/Core Monitor"
-log "  Core-Monitor: install command placeholder — TODO confirm release asset name"
+# Core-Monitor (offyotto/Core-Monitor) — NO brew formula. Direct GitHub release
+# zip download + unzip to /Applications. Verified 2026-08-28 on Lucy + Luna:
+# Core-Monitor.app v17.0.2 (4.5MB) installed and signed/notarized (no xattr
+# workaround needed). Homepage: https://github.com/offyotto/Core-Monitor
+if [[ ! -d "/Applications/Core Monitor.app" ]]; then
+    TMPZIP=/tmp/Core-Monitor.zip
+    curl -fsSL -L -o "$TMPZIP" \
+        "https://github.com/offyotto/Core-Monitor/releases/latest/download/Core-Monitor.app.zip" 2>/dev/null
+    if [[ -s "$TMPZIP" ]]; then
+        unzip -o "$TMPZIP" -d /tmp/ 2>/dev/null
+        if [[ -d /tmp/Core-Monitor.app ]]; then
+            cp -R /tmp/Core-Monitor.app "/Applications/Core Monitor.app"
+            log "  Core Monitor installed (/Applications/Core Monitor.app)"
+        fi
+        rm -f "$TMPZIP"
+    else
+        log "  Core-Monitor download failed — install manually from https://github.com/offyotto/Core-Monitor/releases"
+    fi
+fi
 
-# Cue (Blueturboguy07/cue) — NOT the cuelang.org CUE config language (that is a
-# DIFFERENT package — brew `cue` IS the config language, do NOT uninstall it).
-# Blueturboguy07/cue is a separate Swift menu-bar app on GitHub, no brew formula.
-# TODO(ken): confirm the release asset URL before uncommenting. Provisional pattern:
-#   CUE_REPO="Blueturboguy07/cue"
-#   curl -fsSL "https://github.com/$CUE_REPO/releases/latest/download/cue.dmg" \
-#     -o /tmp/cue.dmg && \
-#     hdiutil attach -nobrowse /tmp/cue.dmg && \
-#     cp -R "/Volumes/Cue/Cue.app" /Applications/ && \
-#     hdiutil detach "/Volumes/Cue"
-log "  Blueturboguy07/cue: install source unconfirmed — TODO"
+# Cue (Blueturboguy07/cue) — NOT the cuelang.org CUE config language (brew `cue`
+# IS that, do NOT uninstall). Blueturboguy07/cue is a separate Swift menu-bar
+# app, signed + notarized as of v0.2.0+. Verified 2026-08-28 on Lucy + Luna:
+# cue.app v0.2.2 (ARM64, 105MB) installed via /releases/download/ URL.
+# Homepage: https://github.com/Blueturboguy07/cue
+if [[ ! -d /Applications/cue.app ]]; then
+    # Discover latest arm64 zip asset name from GitHub API (asset names include
+    # version + arch: e.g. cue-0.2.2-arm64-mac.zip).
+    CUE_URL=$(curl -fsSL "https://api.github.com/repos/Blueturboguy07/cue/releases/latest" 2>/dev/null | \
+        python3 -c "import json,sys;d=json.load(sys.stdin);print(next((a['browser_download_url'] for a in d.get('assets',[]) if 'arm64' in a['name'] and 'mac' in a['name']),''))" 2>/dev/null)
+    if [[ -n "$CUE_URL" ]]; then
+        TMPZIP=/tmp/cue-arm64.zip
+        curl -fsSL -L -o "$TMPZIP" "$CUE_URL" 2>/dev/null
+        if [[ -s "$TMPZIP" ]]; then
+            unzip -o "$TMPZIP" -d /tmp/ 2>/dev/null
+            if [[ -d /tmp/cue.app ]]; then
+                cp -R /tmp/cue.app /Applications/cue.app
+                log "  Cue installed (/Applications/cue.app)"
+            fi
+            rm -f "$TMPZIP"
+        fi
+    else
+        log "  Cue: could not discover arm64 release URL — install manually from https://github.com/Blueturboguy07/cue/releases"
+    fi
+fi
 
 # ─── 6. OpenSSH (already present on macOS) + Kenneth's key ───────────────────
 log "Configuring SSH..."

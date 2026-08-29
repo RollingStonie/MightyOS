@@ -311,6 +311,29 @@ if [[ ! -d /Applications/Handy.app ]]; then
     fi
 fi
 
+# Lumo (iuhoay/lumo) — Spotlight launcher for the terminal. v0.2.3 (arm64 zip).
+# Ships as Lumo.app with Sparkle auto-update baked in. Homepage:
+# https://github.com/iuhoay/lumo
+if [[ ! -d /Applications/Lumo.app ]]; then
+    TMPZIP=/tmp/lumo-arm64.zip
+    LUMO_URL=$(curl -fsSL "https://api.github.com/repos/iuhoay/lumo/releases/latest" 2>/dev/null | \
+        python3 -c "import json,sys;d=json.load(sys.stdin);print(next((a['browser_download_url'] for a in d.get('assets',[]) if 'Lumo.zip' in a['name']),''))" 2>/dev/null)
+    if [[ -n "$LUMO_URL" ]]; then
+        curl -fsSL -L -o "$TMPZIP" "$LUMO_URL" 2>/dev/null
+        if [[ -s "$TMPZIP" ]]; then
+            unzip -o "$TMPZIP" -d /tmp/ 2>/dev/null
+            if [[ -d /tmp/Lumo.app ]]; then
+                cp -R /tmp/Lumo.app /Applications/Lumo.app
+                xattr -dr com.apple.quarantine /Applications/Lumo.app 2>/dev/null
+                log "  Lumo installed (/Applications/Lumo.app) — log in on first launch"
+            fi
+            rm -f "$TMPZIP"
+        fi
+    else
+        log "  Lumo: could not discover Lumo.zip URL — install manually from https://github.com/iuhoay/lumo/releases"
+    fi
+fi
+
 # ─── 6. OpenSSH (already present on macOS) + Kenneth's key ───────────────────
 log "Configuring SSH..."
 mkdir -p "$HOME/.ssh"

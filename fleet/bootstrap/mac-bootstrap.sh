@@ -83,16 +83,17 @@ fi
 # Luna) that were NOT in the baseline → every future Mac was missing them.
 # Pinned here so the next bootstrap auto-installs. Reference:
 #   ~/.claude/skills/kenneth-fleet/references/fleet-machine-state.md
-# Total: 8 baseline + 33 newly-pinned + macshot (2026-08-28) = 42 casks in one install line.
+# Total: 8 baseline + 33 newly-pinned + macshot (2026-08-29) = 42 casks,
+# minus Hammerspoon + LuLu + eqMac retired 2026-08-29 → 39 casks in one install line.
 log "Installing Python, Node.js, and desktop apps (brew-available casks)..."
 brew install python@3.12 node 2>/dev/null || true
 brew install --cask \
     google-chrome discord slack nordvpn docker keeper-password-manager \
     loop stats \
     alt-tab antigravity-cli antigravity-ide brave-browser codeedit \
-    dbeaver-community deskflow devtoys eqmac espanso finicky \
-    freeplane fsnotes hammerspoon iina imageoptim iterm2 \
-    karabiner-elements keepingyouawake localsend logseq lulu \
+    dbeaver-community deskflow devtoys espanso finicky \
+    freeplane fsnotes iina imageoptim iterm2 \
+    karabiner-elements keepingyouawake localsend logseq \
     maccy macshot meetingbar mitmproxy mole-app monitorcontrol numi \
     obsidian only-switch pika super-productivity thaw trex \
     2>/dev/null || true
@@ -530,13 +531,25 @@ fi
 # AltTab (alt-tab cask) retired 2026-08-28 — replaced by Hammerspoon + the
 # macOS built-in Cmd+Tab (which AltTab was overlaying). Auto-uninstalled on
 # next bootstrap to keep AltTab from coming back on future fleet Macs.
-log "Removing retired apps (ActivityWatch + boringNotch + battery + AltTab)..."
+#
+# Hammerspoon + LuLu + eqMac retired 2026-08-29 — Kenneth decision: drop from
+# the fleet baseline. (Hammerspoon was the original reason for installing
+# AltTab, so it's a related retire.) Auto-uninstalled on next bootstrap.
+# Manual one-liner for existing Macs:
+#   brew uninstall --cask hammerspoon lulu eqmac
+log "Removing retired apps (ActivityWatch + boringNotch + battery + AltTab + Hammerspoon + LuLu + eqMac)..."
 brew uninstall --cask activitywatch 2>/dev/null || true
 rm -rf /Applications/boringNotch.app 2>/dev/null || true
 brew uninstall --cask battery 2>/dev/null || true
 rm -rf /Applications/battery.app 2>/dev/null || true
 brew uninstall --cask alt-tab 2>/dev/null || true
 rm -rf "/Applications/AltTab.app" 2>/dev/null || true
+brew uninstall --cask hammerspoon 2>/dev/null || true
+rm -rf /Applications/Hammerspoon.app 2>/dev/null || true
+brew uninstall --cask lulu 2>/dev/null || true
+rm -rf /Applications/LuLu.app 2>/dev/null || true
+brew uninstall --cask eqmac 2>/dev/null || true
+rm -rf /Applications/eqMac.app 2>/dev/null || true
 
 # ─── Done ────────────────────────────────────────────────────────────────────
 log ""

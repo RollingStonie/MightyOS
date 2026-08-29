@@ -1,16 +1,16 @@
 {
   "agent": "lucy",
-  "last_seen": "2026-08-29T16:17:40Z",
+  "last_seen": "2026-08-29T16:22:44Z",
   "status": "online",
   "current_task": "mlx-fleet-heartbeat",
   "model_in_use": "qwen3.8-27b-oq4e-mtp@8000, qwen3.8-27b-uncensored-oq4e@8001, deepseek-v4-flash@8991",
   "mlx_stack": {
-    "checked_at": "2026-08-29T16:17:40Z",
+    "checked_at": "2026-08-29T16:22:44Z",
     "services": {
       "omlx_8000": {
         "port": 8000,
         "status": "online",
-        "checked_at": "2026-08-29T16:17:40Z",
+        "checked_at": "2026-08-29T16:22:44Z",
         "models": [
           {
             "id": "qwen3.8-27b-oq4e-mtp",
@@ -22,7 +22,7 @@
       "omlx_8001": {
         "port": 8001,
         "status": "online",
-        "checked_at": "2026-08-29T16:17:40Z",
+        "checked_at": "2026-08-29T16:22:44Z",
         "models": [
           {
             "id": "qwen3.8-27b-uncensored-oq4e",
@@ -34,7 +34,7 @@
       "ds4_8991": {
         "port": 8991,
         "status": "online",
-        "checked_at": "2026-08-29T16:17:40Z",
+        "checked_at": "2026-08-29T16:22:44Z",
         "models": [
           {
             "id": "deepseek-v4-flash",

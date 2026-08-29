@@ -334,6 +334,28 @@ if [[ ! -d /Applications/Lumo.app ]]; then
     fi
 fi
 
+# Clipp (martona/clipp) — clipboard manager (Mac port added 2026-08). v1.5.0.160
+# ships clipp-macos-arm64.zip. Kenneth decision 2026-08-29 after copy-paste pain
+# on his "free macbook". Verified 2026-08-29 on Claire + Lucy + Luna.
+# Homepage: https://github.com/martona/clipp
+if [[ ! -d /Applications/Clipp.app ]]; then
+    TMPZIP=/tmp/clipp-macos.zip
+    curl -fsSL -L -o "$TMPZIP" \
+        "https://github.com/martona/clipp/releases/download/v1.5.0.160/clipp-macos-arm64.zip" 2>/dev/null
+    if [[ -s "$TMPZIP" ]]; then
+        unzip -o "$TMPZIP" -d /tmp/ 2>/dev/null
+        # The zip unpacks to lowercase "clipp.app" — install as /Applications/Clipp.app
+        if [[ -d /tmp/clipp.app ]]; then
+            cp -R /tmp/clipp.app /Applications/Clipp.app
+            xattr -dr com.apple.quarantine /Applications/Clipp.app 2>/dev/null
+            log "  Clipp installed (/Applications/Clipp.app) — log in on first launch"
+        fi
+        rm -f "$TMPZIP"
+    else
+        log "  Clipp: download failed — install manually from https://github.com/martona/clipp/releases"
+    fi
+fi
+
 # ─── 6. OpenSSH (already present on macOS) + Kenneth's key ───────────────────
 log "Configuring SSH..."
 mkdir -p "$HOME/.ssh"
@@ -461,6 +483,23 @@ if [[ -n "$GH_TOKEN" ]]; then
             log "  ~/.claude already exists — not overwriting. Merge manually."
         fi
     fi
+fi
+
+# Gap #14 fix: ensure the fleet-sync tooling is bootstrapped on every fresh Mac.
+# Without this, a future Mac would have no way to receive Claire's skills,
+# hooks, settings, or memory — `fleet-sync.sh` would simply be missing.
+# Two paths: (a) skills travel via dotfiles repo above (preferred), OR
+# (b) rsync directly from Claire using a one-time bootstrap SSH key. We do (a)
+# here and emit a clear warning if the expected skill isn't present.
+log "Checking fleet-sync skill bootstrap..."
+if [[ ! -f "$HOME/.claude/skills/kenneth-fleet-sync/SKILL.md" ]]; then
+    log "  ⚠ kenneth-fleet-sync skill missing — future one-click-update.sh will fail"
+    log "  Fix: ensure your DOTFILES_REPO includes ~/.claude/skills/, OR"
+    log "       add a one-time rsync from kenneth@belish.tail546eb8.ts.net:"
+    log "       rsync -av kenneth@belish.tail546eb8.ts.net:.claude/skills/kenneth-fleet-sync/ \\"
+    log "             $HOME/.claude/skills/kenneth-fleet-sync/"
+else
+    log "  ✓ kenneth-fleet-sync present at $HOME/.claude/skills/kenneth-fleet-sync/"
 fi
 
 # ─── 11. LaunchAgents (auto-start on login) ───────────────────────────────────

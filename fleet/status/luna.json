@@ -1,9 +1,9 @@
 {
   "agent": "luna",
-  "last_seen": "2026-08-29T20:22:25Z",
+  "last_seen": "2026-08-29T20:27:29Z",
   "status": "online",
   "current_task": "mlx-fleet-heartbeat",
-  "model_in_use": "qwen3.8-27b-oq4e-mtp@8000, qwen3.8-27b-uncensored-oq4e@8001, deepseek-v4-flash@8991",
+  "model_in_use": "deepseek-v4-flash@8991",
   "results_today": 0,
   "errors_today": 0,
   "session_started": "2026-08-21T01:45:00Z",
@@ -12,36 +12,24 @@
   "disk_total_tb": 3.6,
   "heartbeat_source": "mighty-mlx-heartbeat.py v1",
   "mlx_stack": {
-    "checked_at": "2026-08-29T20:22:25Z",
+    "checked_at": "2026-08-29T20:27:29Z",
     "services": {
       "omlx_8000": {
         "port": 8000,
         "status": "online",
-        "checked_at": "2026-08-29T20:22:25Z",
-        "models": [
-          {
-            "id": "qwen3.8-27b-oq4e-mtp",
-            "owned_by": "omlx",
-            "max_model_len": 262144
-          }
-        ]
+        "checked_at": "2026-08-29T20:27:29Z",
+        "models": []
       },
       "omlx_8001": {
         "port": 8001,
-        "status": "online",
-        "checked_at": "2026-08-29T20:22:25Z",
-        "models": [
-          {
-            "id": "qwen3.8-27b-uncensored-oq4e",
-            "owned_by": "omlx",
-            "max_model_len": 262144
-          }
-        ]
+        "status": "offline",
+        "checked_at": "2026-08-29T20:27:29Z",
+        "error": "tcp:ConnectionRefusedError"
       },
       "ds4_8991": {
         "port": 8991,
         "status": "online",
-        "checked_at": "2026-08-29T20:22:25Z",
+        "checked_at": "2026-08-29T20:27:29Z",
         "models": [
           {
             "id": "deepseek-v4-flash",
@@ -56,7 +44,7 @@
         ]
       }
     },
-    "online_count": 3,
+    "online_count": 2,
     "total_count": 3
   }
 }

@@ -2,7 +2,7 @@
 # GENERATED FILE — do not hand-edit.
 # Compiled by tools/fleet_registry/publish.py from A008 registry/fleet-agents.yaml
 # source_commit: d4556eb61633851caf1171ee9fbfae0dc7fe73a6
-# published_at: 2026-08-31T09:08:17.011206+00:00
+# published_at: 2026-08-31T09:29:27.231417+00:00
 # Edit the source in A008, not this file — hand edits here are drift and will be
 # silently overwritten by the next publish run.
 # ============================================================
@@ -54,8 +54,8 @@ claire:
   tailscale: claire.tailnet
   state: ready
   discord_identity: claire-bot
-  discord_app_id: 1529606702322814978   # "HQ Claire" — M016_Hermes/orchestrator/claire_gateway.py + orchestrator/bot.env; verified via GET /users/@me
-  discord_identity_verified_at: 2026-08-29   # traced live; bot built + plist exists (com.kenneth.a008-orchestrator-claire.plist) but not currently loaded/running
+  discord_app_id: null   # TODO: backfill from the live bot (drift_check.py --live) or Kenneth
+  discord_identity_verified_at: null   # never verified by this mechanism yet
   infisical_identity: claire-runtime   # planned — Infisical machine identity not yet provisioned (INFRA-01)
   primary_model: claude-sonnet-4-6
   fallback_model: claude-opus-4-8

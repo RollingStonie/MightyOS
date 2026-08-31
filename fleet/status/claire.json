@@ -1,8 +1,8 @@
 {
   "agent": "claire",
-  "last_seen": "2026-08-26T18:46:59Z",
+  "last_seen": "2026-08-31T09:08:15Z",
   "status": "online",
-  "current_task": "auto-detected: /opt/homebrew/Cellar/python@3.14/3.14.5/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Py",
+  "current_task": "auto-detected: /opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Py",
   "model_in_use": "unknown",
   "results_today": 0,
   "errors_today": 0,

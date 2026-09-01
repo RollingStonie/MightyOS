@@ -2,7 +2,7 @@
 # GENERATED FILE — do not hand-edit.
 # Compiled by tools/fleet_registry/publish.py from A008 registry/fleet-agents.yaml
 # source_commit: d4556eb61633851caf1171ee9fbfae0dc7fe73a6
-# published_at: 2026-08-31T22:24:31.106238+00:00
+# published_at: 2026-09-01T11:24:05.528630+00:00
 # Edit the source in A008, not this file — hand edits here are drift and will be
 # silently overwritten by the next publish run.
 # ============================================================
@@ -71,8 +71,8 @@ mike:
   tailscale: mike.tailnet
   state: ready
   discord_identity: mike-bot
-  discord_app_id: null   # TODO: backfill from the live bot (drift_check.py --live) or Kenneth
-  discord_identity_verified_at: null   # never verified by this mechanism yet
+  discord_app_id: 1478849827189297333   # traced live via GET /users/@me (username "Mike"); token at C:\hermes\bot.env on Jomo per ~/.hermes/secrets/discord_agents.json
+  discord_identity_verified_at: 2026-08-29
   infisical_identity: mike-runtime     # planned — INFRA-01
   primary_model: llama3.2:3b
   fallback_model: deepseek-chat
@@ -101,8 +101,8 @@ mighty:
   tailscale: mighty.tailnet
   state: ready
   discord_identity: mighty-bot
-  discord_app_id: null   # TODO: backfill from the live bot (drift_check.py --live) or Kenneth
-  discord_identity_verified_at: null   # never verified by this mechanism yet
+  discord_app_id: 1512498436522508358   # username "Mighty HQ" per ~/.hermes/secrets/discord_agents.json; NOT live-traced from this Mac — token lives on the VPS (~/hermes/docker-compose.yml + heartbeat.env), not locally readable. That file also notes "pending one-click guild invite as of 2026-07-24" — confirm guild membership before relying on this bot to actually deliver.
+  discord_identity_verified_at: null   # documented, not live-verified — see note above
   infisical_identity: mighty-runtime   # planned — INFRA-01
   primary_model: deepseek-chat
   fallback_model: claude-haiku-4-5
@@ -122,8 +122,8 @@ brian:
   tailscale: brian.tailnet
   state: registered                    # lifecycle remains registered; provisioning never completed
   discord_identity: brian-bot
-  discord_app_id: null   # TODO: backfill from the live bot (drift_check.py --live) or Kenneth
-  discord_identity_verified_at: null   # never verified by this mechanism yet
+  discord_app_id: 1512498849934082178   # traced live via GET /users/@me (username "Pending 1" — still placeholder-named); per ~/.hermes/secrets/discord_agents.json this app is "not in v2 guild" as of that note, so a valid token does not mean it can currently post anywhere real — confirm guild membership before relying on it
+  discord_identity_verified_at: 2026-08-29
   infisical_identity: brian-runtime    # planned — INFRA-01
   status: dormant                      # legitimate device; Kenneth cannot currently locate it
   capabilities: [contenthub-scanner, light-cron, outreach-sending]

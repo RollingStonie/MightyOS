@@ -1,8 +1,8 @@
 # ============================================================
 # GENERATED FILE — do not hand-edit.
 # Compiled by tools/fleet_registry/publish.py from A008 registry/fleet-agents.yaml
-# source_commit: c597dcd7989bbcf0b903abbd24c3660dedebb0f5
-# published_at: 2026-09-01T13:50:06.452697+00:00
+# source_commit: d4556eb61633851caf1171ee9fbfae0dc7fe73a6
+# published_at: 2026-09-01T22:41:28.726148+00:00
 # Edit the source in A008, not this file — hand edits here are drift and will be
 # silently overwritten by the next publish run.
 # ============================================================
@@ -54,8 +54,8 @@ claire:
   tailscale: claire.tailnet
   state: ready
   discord_identity: claire-bot
-  discord_app_id: 1529606702322814978   # "HQ Claire" — M016_Hermes/orchestrator/claire_gateway.py + orchestrator/bot.env; verified via GET /users/@me
-  discord_identity_verified_at: 2026-08-29   # traced live; bot built + plist exists (com.kenneth.a008-orchestrator-claire.plist) but not currently loaded/running
+  discord_app_id: null   # TODO: backfill from the live bot (drift_check.py --live) or Kenneth
+  discord_identity_verified_at: null   # never verified by this mechanism yet
   infisical_identity: claire-runtime   # planned — Infisical machine identity not yet provisioned (INFRA-01)
   primary_model: claude-sonnet-4-6
   fallback_model: claude-opus-4-8
@@ -71,8 +71,8 @@ mike:
   tailscale: mike.tailnet
   state: ready
   discord_identity: mike-bot
-  discord_app_id: 1478849827189297333   # traced live via GET /users/@me (username "Mike"); token at C:\hermes\bot.env on Jomo per ~/.hermes/secrets/discord_agents.json
-  discord_identity_verified_at: 2026-08-29
+  discord_app_id: null   # TODO: backfill from the live bot (drift_check.py --live) or Kenneth
+  discord_identity_verified_at: null   # never verified by this mechanism yet
   infisical_identity: mike-runtime     # planned — INFRA-01
   primary_model: llama3.2:3b
   fallback_model: deepseek-chat
@@ -101,8 +101,8 @@ mighty:
   tailscale: mighty.tailnet
   state: ready
   discord_identity: mighty-bot
-  discord_app_id: 1512498436522508358   # username "Mighty HQ" per ~/.hermes/secrets/discord_agents.json; NOT live-traced from this Mac — token lives on the VPS (~/hermes/docker-compose.yml + heartbeat.env), not locally readable. That file also notes "pending one-click guild invite as of 2026-07-24" — confirm guild membership before relying on this bot to actually deliver.
-  discord_identity_verified_at: null   # documented, not live-verified — see note above
+  discord_app_id: null   # TODO: backfill from the live bot (drift_check.py --live) or Kenneth
+  discord_identity_verified_at: null   # never verified by this mechanism yet
   infisical_identity: mighty-runtime   # planned — INFRA-01
   primary_model: deepseek-chat
   fallback_model: claude-haiku-4-5
@@ -122,8 +122,8 @@ brian:
   tailscale: brian.tailnet
   state: registered                    # lifecycle remains registered; provisioning never completed
   discord_identity: brian-bot
-  discord_app_id: 1512498849934082178   # traced live via GET /users/@me (username "Pending 1" — still placeholder-named); per ~/.hermes/secrets/discord_agents.json this app is "not in v2 guild" as of that note, so a valid token does not mean it can currently post anywhere real — confirm guild membership before relying on it
-  discord_identity_verified_at: 2026-08-29
+  discord_app_id: null   # TODO: backfill from the live bot (drift_check.py --live) or Kenneth
+  discord_identity_verified_at: null   # never verified by this mechanism yet
   infisical_identity: brian-runtime    # planned — INFRA-01
   status: dormant                      # legitimate device; Kenneth cannot currently locate it
   capabilities: [contenthub-scanner, light-cron, outreach-sending]
@@ -137,7 +137,7 @@ brian:
 lucy:
   device: MacBook M5 128GB (planned stationary home anchor)
   tailscale_ip: 100.89.151.8
-  tailscale: lucy.tail546eb8.ts.net   # corrected 2026-09-01 — verified live via `tailscale status` + ssh known_hosts; kens-macbook-pro.tail546eb8.ts.net was stale (pre-rename device name)
+  tailscale: kens-macbook-pro.tail546eb8.ts.net
   state: ready
   discord_identity: lucy-bot
   discord_app_id: 1529820504678989885
@@ -152,20 +152,11 @@ lucy:
 luna:
   device: MacBook M5 128GB (planned portable machine)
   tailscale_ip: 100.102.154.102
-  tailscale: luna.tail546eb8.ts.net   # corrected 2026-09-01 — verified live via `tailscale status` + ssh known_hosts; jomos-macbook-pro.tail546eb8.ts.net was stale (pre-rename device name)
+  tailscale: jomos-macbook-pro.tail546eb8.ts.net
   state: ready
   discord_identity: luna-bot
-  discord_app_id: 1512079905356120064   # traced live 2026-09-01 via SSH into Luna, ~/.hermes/profiles/bud/.env's DISCORD_BOT_TOKEN, GET /users/@me. Was mislabeled "HQ Claire" (identical to Claire's own orchestrator bot's display name) — renamed via PATCH /users/@me to "HQ Luna" same session. The prior value here (1529820746795188285, "verified" 2026-08-18) was never traced against an actual running process — superseded by this confirmed-live one; that id is unaccounted for, do not reuse without checking it isn't a real bot elsewhere first.
-  discord_identity_verified_at: 2026-09-01
-  discord_identity_note: >
-    Same token is ALSO configured on Claire's own machine (~/.hermes/.env and
-    ~/.hermes/profiles/bud-agent/.env) — a shared credential across two
-    machines' "bud"/"bud-agent" Hermes profiles, consistent with the "bud
-    agent bundle" handoffs (2026-08-28) that describe relocating this persona
-    to Luna. Running both machines' bud profiles concurrently risks a Discord
-    gateway single-session-per-token collision. Claire's copies look like
-    pre-migration leftovers — confirm the bud migration is complete before
-    removing them, and never run bud on both machines at once until resolved.
+  discord_app_id: 1529820746795188285
+  discord_identity_verified_at: 2026-08-18
   infisical_identity: luna-runtime      # planned — provision only during approved onboarding
   hermes_profile: luna                # portable-machine Hermes edge profile (matches Ashley/George convention)
   capabilities: [hermes-profile, portable-dev, coding-worker, git-clone-mirror, a008-dev-instance, ollama-qwen3.8, meshcentral-agent, trading-research]

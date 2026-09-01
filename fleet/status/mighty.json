@@ -1,8 +1,8 @@
 {
   "agent": "mighty",
-  "last_seen": "2026-09-01T08:20:22Z",
+  "last_seen": "2026-09-01T08:50:28Z",
   "status": "online",
-  "current_task": "auto-detected: /usr/bin/python3 /home/kenneth/hermes/heartbeat.py --loop",
+  "current_task": "auto-detected: /root/.local/share/pipx/venvs/hermes-agent/bin/python -m finn.runs --profile realtime",
   "model_in_use": "unknown",
   "results_today": 0,
   "errors_today": 0,

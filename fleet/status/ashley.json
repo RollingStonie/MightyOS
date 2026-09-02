@@ -1,6 +1,6 @@
 {
   "agent": "ashley",
-  "last_seen": "2026-09-02T03:59:15Z",
+  "last_seen": "2026-09-02T04:29:18Z",
   "status": "online",
   "current_task": "auto-detected: /usr/bin/python3 /home/kenneth/hermes/heartbeat.py --loop",
   "model_in_use": "deepseek-v4-flash",

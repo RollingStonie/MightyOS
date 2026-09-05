@@ -1,6 +1,6 @@
 {
   "agent": "luna",
-  "last_seen": "2026-09-05T05:31:28Z",
+  "last_seen": "2026-09-05T05:36:35Z",
   "status": "online",
   "current_task": "mlx-fleet-heartbeat",
   "model_in_use": "Ornith-1.5-35B-A3B-BigBang@8000, deepseek-v4-flash@8991",
@@ -12,12 +12,12 @@
   "disk_total_tb": 3.6,
   "heartbeat_source": "mighty-mlx-heartbeat.py v1",
   "mlx_stack": {
-    "checked_at": "2026-09-05T05:31:28Z",
+    "checked_at": "2026-09-05T05:36:35Z",
     "services": {
       "omlx_8000": {
         "port": 8000,
         "status": "online",
-        "checked_at": "2026-09-05T05:31:28Z",
+        "checked_at": "2026-09-05T05:36:35Z",
         "models": [
           {
             "id": "Ornith-1.5-35B-A3B-BigBang",
@@ -49,13 +49,13 @@
       "omlx_8001": {
         "port": 8001,
         "status": "offline",
-        "checked_at": "2026-09-05T05:31:28Z",
+        "checked_at": "2026-09-05T05:36:35Z",
         "error": "tcp:ConnectionRefusedError"
       },
       "ds4_8991": {
         "port": 8991,
         "status": "online",
-        "checked_at": "2026-09-05T05:31:28Z",
+        "checked_at": "2026-09-05T05:36:35Z",
         "models": [
           {
             "id": "deepseek-v4-flash",

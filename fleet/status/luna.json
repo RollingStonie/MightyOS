@@ -1,9 +1,9 @@
 {
   "agent": "luna",
-  "last_seen": "2026-09-06T02:59:58Z",
-  "status": "degraded",
+  "last_seen": "2026-09-06T05:36:10Z",
+  "status": "offline",
   "current_task": "mlx-fleet-heartbeat",
-  "model_in_use": "deepseek-v4-flash@8991",
+  "model_in_use": "none",
   "results_today": 0,
   "errors_today": 0,
   "session_started": "2026-08-21T01:45:00Z",
@@ -12,39 +12,28 @@
   "disk_total_tb": 3.6,
   "heartbeat_source": "mighty-mlx-heartbeat.py v1",
   "mlx_stack": {
-    "checked_at": "2026-09-06T02:59:58Z",
+    "checked_at": "2026-09-06T05:36:10Z",
     "services": {
       "omlx_8000": {
         "port": 8000,
         "status": "offline",
-        "checked_at": "2026-09-06T02:59:58Z",
+        "checked_at": "2026-09-06T05:36:10Z",
         "error": "tcp:ConnectionRefusedError"
       },
       "omlx_8001": {
         "port": 8001,
         "status": "offline",
-        "checked_at": "2026-09-06T02:59:58Z",
+        "checked_at": "2026-09-06T05:36:10Z",
         "error": "tcp:ConnectionRefusedError"
       },
       "ds4_8991": {
         "port": 8991,
-        "status": "online",
-        "checked_at": "2026-09-06T02:59:58Z",
-        "models": [
-          {
-            "id": "deepseek-v4-flash",
-            "owned_by": "ds4.c",
-            "max_model_len": 65536
-          },
-          {
-            "id": "deepseek-v4-pro",
-            "owned_by": "ds4.c",
-            "max_model_len": 65536
-          }
-        ]
+        "status": "offline",
+        "checked_at": "2026-09-06T05:36:10Z",
+        "error": "tcp:ConnectionRefusedError"
       }
     },
-    "online_count": 1,
+    "online_count": 0,
     "total_count": 3
   }
 }

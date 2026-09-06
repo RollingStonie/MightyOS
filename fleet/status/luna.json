@@ -1,9 +1,9 @@
 {
   "agent": "luna",
-  "last_seen": "2026-09-06T18:05:33Z",
-  "status": "online",
+  "last_seen": "2026-09-06T18:10:39Z",
+  "status": "degraded",
   "current_task": "mlx-fleet-heartbeat",
-  "model_in_use": "Ornith-1.5-35B-A3B-BigBang@8000, deepseek-v4-flash@8991",
+  "model_in_use": "deepseek-v4-flash@8991",
   "results_today": 0,
   "errors_today": 0,
   "session_started": "2026-08-21T01:45:00Z",
@@ -12,50 +12,24 @@
   "disk_total_tb": 3.6,
   "heartbeat_source": "mighty-mlx-heartbeat.py v1",
   "mlx_stack": {
-    "checked_at": "2026-09-06T18:05:33Z",
+    "checked_at": "2026-09-06T18:10:39Z",
     "services": {
       "omlx_8000": {
         "port": 8000,
-        "status": "online",
-        "checked_at": "2026-09-06T18:05:33Z",
-        "models": [
-          {
-            "id": "Ornith-1.5-35B-A3B-BigBang",
-            "owned_by": "omlx",
-            "max_model_len": 262144
-          },
-          {
-            "id": "Qwen3.8-27B",
-            "owned_by": "omlx",
-            "max_model_len": 262144
-          },
-          {
-            "id": "Qwen3.8-27B-Uncensored",
-            "owned_by": "omlx",
-            "max_model_len": 262144
-          },
-          {
-            "id": "Qwen3.8-Flash-Next",
-            "owned_by": "omlx",
-            "max_model_len": 262144
-          },
-          {
-            "id": "Tiel-Coder-35B-A3B",
-            "owned_by": "omlx",
-            "max_model_len": 262144
-          }
-        ]
+        "status": "offline",
+        "checked_at": "2026-09-06T18:10:39Z",
+        "error": "tcp:ConnectionRefusedError"
       },
       "omlx_8001": {
         "port": 8001,
         "status": "offline",
-        "checked_at": "2026-09-06T18:05:33Z",
+        "checked_at": "2026-09-06T18:10:39Z",
         "error": "tcp:ConnectionRefusedError"
       },
       "ds4_8991": {
         "port": 8991,
         "status": "online",
-        "checked_at": "2026-09-06T18:05:33Z",
+        "checked_at": "2026-09-06T18:10:39Z",
         "models": [
           {
             "id": "deepseek-v4-flash",
@@ -70,7 +44,7 @@
         ]
       }
     },
-    "online_count": 2,
+    "online_count": 1,
     "total_count": 3
   }
 }

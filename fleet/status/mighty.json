@@ -1,6 +1,6 @@
 {
   "agent": "mighty",
-  "last_seen": "2026-10-04T22:23:16Z",
+  "last_seen": "2026-10-04T22:53:34Z",
   "status": "online",
   "current_task": "auto-detected: /usr/bin/python3 /home/kenneth/hermes/heartbeat.py --loop",
   "model_in_use": "unknown",

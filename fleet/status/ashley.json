@@ -1,8 +1,8 @@
 {
   "agent": "ashley",
-  "last_seen": "2026-11-06T22:02:46Z",
+  "last_seen": "2026-11-06T22:32:49Z",
   "status": "online",
-  "current_task": "auto-detected: python3 -c \nexec(open('/root/.hermes/profiles/ashley/skills/marketing/trial-request-handler/scripts/_derive_rules_22.py'",
+  "current_task": "auto-detected: /usr/bin/python3 /home/kenneth/hermes/heartbeat.py --loop",
   "model_in_use": "deepseek-v4-flash",
   "results_today": 0,
   "errors_today": 0,
